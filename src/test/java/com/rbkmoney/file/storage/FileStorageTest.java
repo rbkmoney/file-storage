@@ -1,8 +1,6 @@
 package com.rbkmoney.file.storage;
 
-import com.rbkmoney.woody.thrift.impl.http.THSpawnClientBuilder;
 import org.apache.thrift.TException;
-import org.junit.Before;
 import org.junit.Test;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpEntity;
@@ -14,8 +12,6 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,16 +21,6 @@ import java.util.Collections;
 import static org.junit.Assert.assertEquals;
 
 public class FileStorageTest extends AbstractIntegrationTest {
-
-    private FileStorageSrv.Iface client;
-
-    @Before
-    public void before() throws URISyntaxException {
-        client = new THSpawnClientBuilder()
-                .withAddress(new URI("http://localhost:" + port + "/file_storage"))
-                .withNetworkTimeout(TIMEOUT)
-                .build(FileStorageSrv.Iface.class);
-    }
 
     @Test
     public void uploadAndDownloadFileFromStorageTest() throws IOException, TException {
@@ -47,9 +33,11 @@ public class FileStorageTest extends AbstractIntegrationTest {
             NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), getDayInstant().toString());
             String uploadUrl = fileResult.getUploadUrl();
 
+            // запись данных в файл
             Files.write(testFile, "Test".getBytes());
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            // запись файла в тело запроса
             body.add("file", new FileSystemResource(testFile.toFile()));
 
             HttpHeaders headers = new HttpHeaders();
@@ -60,7 +48,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
             RestTemplate restTemplate = new RestTemplate();
             restTemplate.postForEntity(uploadUrl, requestEntity, Void.class);
 
-
+            // генерация url с доступом только для загрузки
             String urs = client.generateDownloadUrl(fileResult.getFileData().getFileId(), getDayInstant().toString());
 
             URL url = new URL(urs);

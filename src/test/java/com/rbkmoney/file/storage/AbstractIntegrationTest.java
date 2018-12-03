@@ -1,5 +1,7 @@
 package com.rbkmoney.file.storage;
 
+import com.rbkmoney.woody.thrift.impl.http.THSpawnClientBuilder;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,6 +17,8 @@ import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
@@ -40,6 +44,8 @@ public abstract class AbstractIntegrationTest {
 
     @LocalServerPort
     protected int port;
+
+    protected FileStorageSrv.Iface client;
 
     @ClassRule
     public static GenericContainer cephContainer = new GenericContainer("dr.rbkmoney.com/ceph-demo:latest")
@@ -74,6 +80,14 @@ public abstract class AbstractIntegrationTest {
                     "storage.bucketName=" + BUCKET_NAME
             );
         }
+    }
+
+    @Before
+    public void before() throws URISyntaxException {
+        client = new THSpawnClientBuilder()
+                .withAddress(new URI("http://localhost:" + port + "/file_storage"))
+                .withNetworkTimeout(TIMEOUT)
+                .build(FileStorageSrv.Iface.class);
     }
 
     protected Instant getDayInstant() {

@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 public class CheckerUtil {
 
-    private static final Pattern PATTERN = Pattern.compile("^[a-zA-Z0-9 ,-_.]*$");
+    private static final Pattern FILE_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9 ,-_.]*$");
 
     public static void checkString(String string, String exMessage) throws TException {
         if (Strings.isNullOrEmpty(string)) {
@@ -16,15 +16,15 @@ public class CheckerUtil {
         }
     }
 
-    public static void checkRegexString(String string, String exMessage) throws TException {
-        if (!PATTERN.matcher(string).matches()) {
+    public static void checkFileName(String string, String exMessage) throws TException {
+        if (!FILE_NAME_PATTERN.matcher(string).matches()) {
             throw new TException(exMessage);
         }
     }
 
 
     public static void checkFile(MultipartFile file, String exMessage) throws TException {
-        if (file.isEmpty() || file.getSize() == 0) {
+        if (file.isEmpty()) {
             throw new TException(exMessage);
         }
     }
