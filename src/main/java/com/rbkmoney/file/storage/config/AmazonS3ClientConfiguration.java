@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class StorageConfig {
+public class AmazonS3ClientConfiguration {
 
     @Value("${storage.endpoint}")
     private String endpoint;
@@ -24,13 +24,13 @@ public class StorageConfig {
     @Value("${storage.signingRegion}")
     private String signingRegion;
 
-    @Value("${storage.accessKey:}")
+    @Value("${storage.accessKey}")
     private String accessKey;
 
-    @Value("${storage.secretKey:}")
+    @Value("${storage.secretKey}")
     private String secretKey;
 
-    @Value("${storage.client.protocol:HTTP}")
+    @Value("${storage.client.protocol}")
     private Protocol protocol;
 
     @Value("${storage.client.maxErrorRetry}")
