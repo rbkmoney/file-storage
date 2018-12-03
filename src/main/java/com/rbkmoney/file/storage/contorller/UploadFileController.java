@@ -27,7 +27,7 @@ public class UploadFileController {
         try {
             log.info("Request handleFileUpload fileId: {}", fileId);
             checkString(fileId, "Bad request parameter, fileId required and not empty arg");
-            storageService.uploadFile(fileId, file.getInputStream());
+            storageService.uploadFile(fileId, file);
             ResponseEntity<Object> responseEntity = ResponseEntity.ok().build();
             log.info("Response: ResponseEntity: {}", responseEntity);
             return responseEntity;

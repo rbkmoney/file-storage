@@ -4,10 +4,10 @@ import com.rbkmoney.damsel.msgpack.Value;
 import com.rbkmoney.file.storage.FileData;
 import com.rbkmoney.file.storage.NewFileResult;
 import com.rbkmoney.file.storage.service.exception.StorageException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.time.Instant;
 import java.util.Map;
@@ -20,6 +20,6 @@ public interface StorageService {
 
     URL generateDownloadUrl(String fileId, Instant expirationTime) throws StorageException, FileNotFoundException;
 
-    void uploadFile(String fileId, InputStream inputStream) throws StorageException, IOException;
+    void uploadFile(String fileId, MultipartFile multipartFile) throws StorageException, IOException;
 
 }

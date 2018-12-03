@@ -12,9 +12,11 @@ import com.rbkmoney.file.storage.service.exception.StorageException;
 import com.rbkmoney.file.storage.util.DamselUtil;
 import com.rbkmoney.geck.common.util.TypeUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import javax.annotation.PostConstruct;
@@ -27,6 +29,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -84,7 +87,6 @@ public class AmazonS3StorageService implements StorageService {
                     fileId,
                     fileName,
                     createdAt,
-                    //todo
                     "",
                     metadata
             );
@@ -94,12 +96,10 @@ public class AmazonS3StorageService implements StorageService {
             URL uploadUrl = createUploadUrl(fileId);
 
             log.info(
-                    "File have been successfully created, fileId='{}', bucketId='{}', filename='{}', md5='{}'",
+                    "File have been successfully created, fileId='{}', bucketId='{}', filename='{}'",
                     fileId,
                     bucketName,
-                    fileName,
-                    //todo
-                    ""
+                    fileName
             );
 
             return new NewFileResult(uploadUrl.toString(), fileData);
@@ -122,80 +122,30 @@ public class AmazonS3StorageService implements StorageService {
     }
 
     @Override
-    public void uploadFile(String fileId, InputStream inputStream) throws StorageException, IOException {
+    public void uploadFile(String fileId, MultipartFile multipartFile) throws StorageException, IOException {
         log.info("Trying to upload file to storage, filename='{}', bucketId='{}'", fileId, bucketName);
 
-        try {
+        Path tempFile = Files.createTempFile("", "temp");
 
-            //todo
-            Path testFile = Files.createTempFile("", "test_file");
-            Files.write(testFile, "Test".getBytes());
+        try {
+            Files.copy(multipartFile.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
 
             S3Object object = getS3Object(fileId);
 
             checkFileStatus(object);
 
             object.getObjectMetadata().addUserMetadata(FILE_UPLOADED, "true");
-/*
-            //todo DEBUG
-            try {
-                //            InputStream inputStream = file.getInputStream();
-                Path testActualFile = Files.createTempFile("", "test_actual_file");
-                Files.copy(inputStream, testActualFile, StandardCopyOption.REPLACE_EXISTING);
-                System.out.println("!!!!!!!");
-                for (String readAllLine : Files.readAllLines(testActualFile)) {
-                    System.out.println(readAllLine);
-                }
-           testActualFile = Files.createTempFile("", "test_actual_file");
-            Files.copy(inputStream, testActualFile, StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("!!!!!!!");
-            for (String readAllLine : Files.readAllLines(testActualFile)) {
-                System.out.println(readAllLine);
-            }
-            } catch (Exception e) {
-            }
-            //todo
-*/
+            object.getObjectMetadata().addUserMetadata(FILEDATA_MD_5, calculateMd5(tempFile));
 
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, fileId, testFile.toFile());
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, fileId, tempFile.toFile());
             putObjectRequest.setMetadata(object.getObjectMetadata());
             s3Client.putObject(putObjectRequest);
 
-/*
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, fileId, new S3ObjectInputStream(
-                    new FileInputStream(testFile.toFile()),null
-            ),object.getObjectMetadata());
-            s3Client.putObject(putObjectRequest);
-*/
-/*
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, fileId, new FileInputStream(testFile.toFile()),object.getObjectMetadata());
-            s3Client.putObject(putObjectRequest);
-*/
-
-/* todo
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, fileId, inputStream, object.getObjectMetadata());
-            s3Client.putObject(putObjectRequest);
-*/
             log.info(
                     "File have been successfully uploaded, fileId='{}', bucketId='{}'",
                     fileId,
                     bucketName
             );
-
-            //todo
-     /*       try {
-                S3Object object1 = s3Client.getObject(bucketName, fileId);
-                S3ObjectInputStream objectContent = object1.getObjectContent();
-                Path testActualFile = Files.createTempFile("", "test_actual_file");
-                Files.copy(objectContent, testActualFile, StandardCopyOption.REPLACE_EXISTING);
-                System.out.println("!!!!!!!");
-                for (String readAllLine : Files.readAllLines(testActualFile)) {
-                    System.out.println(readAllLine);
-                }
-            } catch (Exception e) {
-            }
-*/
-            //todo
         } catch (AmazonClientException ex) {
             throw new StorageException(
                     String.format(
@@ -205,6 +155,8 @@ public class AmazonS3StorageService implements StorageService {
                     ),
                     ex
             );
+        } finally {
+            Files.deleteIfExists(tempFile);
         }
     }
 
@@ -254,7 +206,7 @@ public class AmazonS3StorageService implements StorageService {
         Date expirationTime = getDateFromObjectMetadata(objectMetadata);
         Date time = new Date();
         if (time.getTime() < expirationTime.getTime()) {
-            log.info("File was uploaded: ETag='{}'", s3Object.getObjectMetadata().getETag());
+            log.info("File was not uploaded, but expiration time is valid: ETag='{}'", s3Object.getObjectMetadata().getETag());
             return;
         }
 
@@ -404,5 +356,9 @@ public class AmazonS3StorageService implements StorageService {
         if (Objects.isNull(object)) {
             throw new FileNotFoundException(String.format(objectType + " is null, fileId='%s', bucketId='%s'", fileId, bucketName));
         }
+    }
+
+    private String calculateMd5(Path tempFile) throws IOException {
+        return DigestUtils.md5Hex(Files.newInputStream(tempFile));
     }
 }
