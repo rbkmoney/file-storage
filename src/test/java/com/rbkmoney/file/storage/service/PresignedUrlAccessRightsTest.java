@@ -41,10 +41,11 @@ public class PresignedUrlAccessRightsTest extends AbstractIntegrationTest {
     @Test
     public void downloadUrlTest() throws TException, IOException {
         Path testFile = Files.createTempFile("", "test_file");
-        Files.write(testFile, new byte[0]);
+
+        Path testActualFile = Files.createTempFile("", "test_actual_file");
 
         try {
-            Path testActualFile = Files.createTempFile("", "test_actual_file");
+            Files.write(testFile, new byte[0]);
 
             NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), getDayInstant().toString());
 
@@ -62,6 +63,7 @@ public class PresignedUrlAccessRightsTest extends AbstractIntegrationTest {
             assertEquals(Files.readAllLines(testFile), Files.readAllLines(testActualFile));
         } finally {
             Files.deleteIfExists(testFile);
+            Files.deleteIfExists(testActualFile);
         }
     }
 }
