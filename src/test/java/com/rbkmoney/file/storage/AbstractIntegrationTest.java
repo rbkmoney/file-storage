@@ -1,18 +1,22 @@
 package com.rbkmoney.file.storage;
 
+import org.junit.ClassRule;
 import org.junit.runner.RunWith;
-import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.util.EnvironmentTestUtils;
+import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -23,7 +27,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 @ContextConfiguration(classes = FileStorageApplication.class, initializers = AbstractIntegrationTest.Initializer.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-public class AbstractIntegrationTest {
+public abstract class AbstractIntegrationTest {
 
     protected static final int TIMEOUT = 555000;
 
@@ -37,21 +41,21 @@ public class AbstractIntegrationTest {
     @LocalServerPort
     protected int port;
 
-//    @ClassRule
-//    public static GenericContainer cephContainer = new GenericContainer("dr.rbkmoney.com/ceph-demo:latest")
-//            .withEnv("RGW_NAME", "localhost")
-//            .withEnv("NETWORK_AUTO_DETECT", "4")
-//            .withEnv("CEPH_DEMO_UID", "ceph-test")
-//            .withEnv("CEPH_DEMO_ACCESS_KEY", AWS_ACCESS_KEY)
-//            .withEnv("CEPH_DEMO_SECRET_KEY", AWS_SECRET_KEY)
-//            .withEnv("CEPH_DEMO_BUCKET", BUCKET_NAME)
-//            .withExposedPorts(5000, 80)
-//            .waitingFor(
-//                    new HttpWaitStrategy()
-//                            .forPath("/api/v0.1/health")
-//                            .forStatusCode(200)
-//                            .withStartupTimeout(Duration.ofMinutes(10))
-//            );
+    @ClassRule
+    public static GenericContainer cephContainer = new GenericContainer("dr.rbkmoney.com/ceph-demo:latest")
+            .withEnv("RGW_NAME", "localhost")
+            .withEnv("NETWORK_AUTO_DETECT", "4")
+            .withEnv("CEPH_DEMO_UID", "ceph-test")
+            .withEnv("CEPH_DEMO_ACCESS_KEY", AWS_ACCESS_KEY)
+            .withEnv("CEPH_DEMO_SECRET_KEY", AWS_SECRET_KEY)
+            .withEnv("CEPH_DEMO_BUCKET", BUCKET_NAME)
+            .withExposedPorts(5000, 80)
+            .waitingFor(
+                    new HttpWaitStrategy()
+                            .forPath("/api/v0.1/health")
+                            .forStatusCode(200)
+                            .withStartupTimeout(Duration.ofMinutes(10))
+            );
 
     public static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
         @Override
@@ -59,13 +63,14 @@ public class AbstractIntegrationTest {
             EnvironmentTestUtils.addEnvironment(
                     "testcontainers",
                     configurableApplicationContext.getEnvironment(),
-//                    "storage.endpoint=" + cephContainer.getContainerIpAddress() + ":" + cephContainer.getMappedPort(80),
-                    "storage.endpoint=localhost:32827",
+                    "storage.endpoint=" + cephContainer.getContainerIpAddress() + ":" + cephContainer.getMappedPort(80),
+                    // в случае, если поднят локальный сторедж в контейнере
+                    // "storage.endpoint=localhost:32827",
                     "storage.signingRegion=" + SIGNING_REGION,
                     "storage.accessKey=" + AWS_ACCESS_KEY,
                     "storage.secretKey=" + AWS_SECRET_KEY,
-                    "storage.client.protocol=" + PROTOCOL,
-                    "storage.client.maxErrorRetry=" + MAX_ERROR_RETRY,
+                    "storage.clientProtocol=" + PROTOCOL,
+                    "storage.clientMaxErrorRetry=" + MAX_ERROR_RETRY,
                     "storage.bucketName=" + BUCKET_NAME
             );
         }

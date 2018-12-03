@@ -1,4 +1,4 @@
-package com.rbkmoney.file.storage.config;
+package com.rbkmoney.file.storage.configuration;
 
 import com.rbkmoney.file.storage.FileStorageSrv;
 import com.rbkmoney.file.storage.handler.FileStorageHandler;

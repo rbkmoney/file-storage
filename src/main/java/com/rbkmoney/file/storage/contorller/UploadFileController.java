@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileNotFoundException;
 
+import static com.rbkmoney.file.storage.util.CheckerUtil.checkFile;
 import static com.rbkmoney.file.storage.util.CheckerUtil.checkString;
 
 @RestController
@@ -26,6 +27,7 @@ public class UploadFileController {
                                            @RequestParam(value = "file") MultipartFile file) {
         try {
             log.info("Request handleFileUpload fileId: {}", fileId);
+            checkFile(file, "Bad request parameter, file required and not empty arg");
             checkString(fileId, "Bad request parameter, fileId required and not empty arg");
             storageService.uploadFile(fileId, file);
             ResponseEntity<Object> responseEntity = ResponseEntity.ok().build();

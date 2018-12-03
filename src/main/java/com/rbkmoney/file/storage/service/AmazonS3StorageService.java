@@ -7,14 +7,14 @@ import com.amazonaws.services.s3.model.*;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.rbkmoney.file.storage.FileData;
 import com.rbkmoney.file.storage.NewFileResult;
+import com.rbkmoney.file.storage.configuration.properties.StorageProperties;
 import com.rbkmoney.file.storage.contorller.UploadFileController;
 import com.rbkmoney.file.storage.service.exception.StorageException;
 import com.rbkmoney.file.storage.util.DamselUtil;
 import com.rbkmoney.geck.common.util.TypeUtil;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class AmazonS3StorageService implements StorageService {
 
     private static final String EXPIRATION_TIME = "x-rbkmoney-file-expiration-time";
@@ -48,17 +49,12 @@ public class AmazonS3StorageService implements StorageService {
 
     private final TransferManager transferManager;
     private final AmazonS3 s3Client;
-    private final String bucketName;
-
-    @Autowired
-    public AmazonS3StorageService(TransferManager transferManager, @Value("${storage.bucketName}") String bucketName) {
-        this.transferManager = transferManager;
-        this.s3Client = transferManager.getAmazonS3Client();
-        this.bucketName = bucketName;
-    }
+    private final StorageProperties storageProperties;
+    private String bucketName;
 
     @PostConstruct
     public void init() {
+        this.bucketName = storageProperties.getBucketName();
         if (!s3Client.doesBucketExist(bucketName)) {
             log.info("Create bucket in file storage, bucketId='{}'", bucketName);
             s3Client.createBucket(bucketName);

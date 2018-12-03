@@ -16,6 +16,7 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.Map;
 
+import static com.rbkmoney.file.storage.util.CheckerUtil.checkRegexString;
 import static com.rbkmoney.file.storage.util.CheckerUtil.checkString;
 
 @RequiredArgsConstructor
@@ -46,6 +47,7 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
         try {
             log.info("Request createNewFile fileName: {}, metadata: {}, expiresAt: {}", fileName, metadata, expiresAt);
             checkString(fileName, "Bad request parameter, fileName required and not empty arg");
+            checkRegexString(fileName, "Bad request parameter, enter the correct fileName");
             checkString(expiresAt, "Bad request parameter, expiresAt required and not empty arg");
             Instant instant = TypeUtil.stringToInstant(expiresAt);
             NewFileResult newFile = storageService.createNewFile(fileName, metadata, instant);

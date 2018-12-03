@@ -1,7 +1,6 @@
-package com.rbkmoney.file.storage.config;
+package com.rbkmoney.file.storage.configuration;
 
 import com.amazonaws.ClientConfiguration;
-import com.amazonaws.Protocol;
 import com.amazonaws.auth.AWSCredentialsProviderChain;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -11,30 +10,16 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import org.springframework.beans.factory.annotation.Value;
+import com.rbkmoney.file.storage.configuration.properties.StorageProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@RequiredArgsConstructor
 public class AmazonS3ClientConfiguration {
 
-    @Value("${storage.endpoint}")
-    private String endpoint;
-
-    @Value("${storage.signingRegion}")
-    private String signingRegion;
-
-    @Value("${storage.accessKey}")
-    private String accessKey;
-
-    @Value("${storage.secretKey}")
-    private String secretKey;
-
-    @Value("${storage.client.protocol}")
-    private Protocol protocol;
-
-    @Value("${storage.client.maxErrorRetry}")
-    private int maxErrorRetry;
+    private final StorageProperties storageProperties;
 
     @Bean
     public AmazonS3 storageClient(AWSCredentialsProviderChain credentialsProviderChain, ClientConfiguration clientConfiguration) {
@@ -42,7 +27,10 @@ public class AmazonS3ClientConfiguration {
                 .withCredentials(credentialsProviderChain)
                 .withPathStyleAccessEnabled(true)
                 .withEndpointConfiguration(
-                        new AwsClientBuilder.EndpointConfiguration(endpoint, signingRegion)
+                        new AwsClientBuilder.EndpointConfiguration(
+                                storageProperties.getEndpoint(),
+                                storageProperties.getSigningRegion()
+                        )
                 )
                 .withClientConfiguration(clientConfiguration)
                 .build();
@@ -54,8 +42,8 @@ public class AmazonS3ClientConfiguration {
                 new EnvironmentVariableCredentialsProvider(),
                 new AWSStaticCredentialsProvider(
                         new BasicAWSCredentials(
-                                accessKey,
-                                secretKey
+                                storageProperties.getAccessKey(),
+                                storageProperties.getSecretKey()
                         )
                 )
         );
@@ -64,9 +52,9 @@ public class AmazonS3ClientConfiguration {
     @Bean
     public ClientConfiguration clientConfiguration() {
         return new ClientConfiguration()
-                .withProtocol(protocol)
+                .withProtocol(storageProperties.getClientProtocol())
                 .withSignerOverride("S3SignerType")
-                .withMaxErrorRetry(maxErrorRetry);
+                .withMaxErrorRetry(storageProperties.getClientMaxErrorRetry());
     }
 
     @Bean
