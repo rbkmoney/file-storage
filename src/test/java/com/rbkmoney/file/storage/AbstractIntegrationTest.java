@@ -10,6 +10,9 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -21,6 +24,8 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @ContextConfiguration(classes = FileStorageApplication.class, initializers = AbstractIntegrationTest.Initializer.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class AbstractIntegrationTest {
+
+    protected static final int TIMEOUT = 555000;
 
     private static final String SIGNING_REGION = "RU";
     private static final String AWS_ACCESS_KEY = "test";
@@ -76,6 +81,13 @@ public class AbstractIntegrationTest {
 
     private ZoneOffset getZoneOffset() {
         return ZoneOffset.systemDefault().getRules().getOffset(LocalDateTime.now());
+    }
+
+    protected HttpURLConnection getHttpURLConnection(URL url, boolean doOutput, String method) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(doOutput);
+        connection.setRequestMethod(method);
+        return connection;
     }
 
 }

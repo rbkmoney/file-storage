@@ -1,13 +1,8 @@
 package com.rbkmoney.file.storage;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-public class FileStorageApplicationTests {
+public class FileStorageApplicationTests extends AbstractIntegrationTest {
 
     @Test
     public void contextLoads() {
