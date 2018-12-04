@@ -33,8 +33,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class AbstractIntegrationTest {
 
-    protected static final int TIMEOUT = 555000;
-
+    private static final int TIMEOUT = 555000;
     private static final String SIGNING_REGION = "RU";
     private static final String AWS_ACCESS_KEY = "test";
     private static final String AWS_SECRET_KEY = "test";

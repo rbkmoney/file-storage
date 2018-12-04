@@ -6,12 +6,14 @@ import com.rbkmoney.file.storage.FileNotFound;
 import com.rbkmoney.file.storage.FileStorageSrv;
 import com.rbkmoney.file.storage.NewFileResult;
 import com.rbkmoney.file.storage.service.StorageService;
+import com.rbkmoney.file.storage.service.exception.StorageException;
+import com.rbkmoney.file.storage.service.exception.StorageFileNotFoundException;
 import com.rbkmoney.geck.common.util.TypeUtil;
+import com.rbkmoney.woody.api.flow.error.WUnavailableResultException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
 
-import java.io.FileNotFoundException;
 import java.net.URL;
 import java.time.Instant;
 import java.util.Map;
@@ -33,9 +35,12 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             FileData fileData = storageService.getFileData(fileId);
             log.info("Response: fileData: {}", fileData);
             return fileData;
-        } catch (FileNotFoundException e) {
+        } catch (StorageFileNotFoundException e) {
             log.error("Error when getFileData e: ", e);
             throw new FileNotFound();
+        } catch (StorageException e) {
+            log.error("Error when getFileData e: ", e);
+            throw new WUnavailableResultException(e);
         } catch (Exception e) {
             log.error("Error when getFileData e: ", e);
             throw new TException(e);
@@ -53,6 +58,12 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             NewFileResult newFile = storageService.createNewFile(fileName, metadata, instant);
             log.info("Response: newFileResult: {}", newFile);
             return newFile;
+        } catch (StorageFileNotFoundException e) {
+            log.error("Error when createNewFile e: ", e);
+            throw new FileNotFound();
+        } catch (StorageException e) {
+            log.error("Error when createNewFile e: ", e);
+            throw new WUnavailableResultException(e);
         } catch (Exception e) {
             log.error("Error when createNewFile e: ", e);
             throw new TException(e);
@@ -69,9 +80,12 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             URL url = storageService.generateDownloadUrl(fileId, instant);
             log.info("Response: url: {}", url);
             return url.toString();
-        } catch (FileNotFoundException e) {
+        } catch (StorageFileNotFoundException e) {
             log.error("Error when generateDownloadUrl e: ", e);
             throw new FileNotFound();
+        } catch (StorageException e) {
+            log.error("Error when generateDownloadUrl e: ", e);
+            throw new WUnavailableResultException(e);
         } catch (Exception e) {
             log.error("Error when generateDownloadUrl e: ", e);
             throw new TException(e);

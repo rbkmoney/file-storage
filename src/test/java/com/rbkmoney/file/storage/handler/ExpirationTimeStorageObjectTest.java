@@ -1,9 +1,9 @@
 package com.rbkmoney.file.storage.handler;
 
 import com.rbkmoney.file.storage.AbstractIntegrationTest;
+import com.rbkmoney.file.storage.FileNotFound;
 import com.rbkmoney.file.storage.NewFileResult;
 import com.rbkmoney.file.storage.service.StorageService;
-import com.rbkmoney.woody.api.flow.error.WRuntimeException;
 import org.apache.thrift.TException;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,7 @@ public class ExpirationTimeStorageObjectTest extends AbstractIntegrationTest {
     @Autowired
     private StorageService storageService;
 
-    @Test(expected = WRuntimeException.class)
+    @Test(expected = FileNotFound.class)
     public void expiredTimeForFileDataInMetadataTest() throws TException, InterruptedException {
         NewFileResult testFile = client.createNewFile("test_file", Collections.emptyMap(), getSecondInstant().toString());
 
@@ -29,7 +29,7 @@ public class ExpirationTimeStorageObjectTest extends AbstractIntegrationTest {
         client.getFileData(testFile.getFileData().getFileId());
     }
 
-    @Test(expected = WRuntimeException.class)
+    @Test(expected = FileNotFound.class)
     public void expiredTimeForGenerateUrlInMetadataTest() throws TException, InterruptedException {
         NewFileResult testFile = client.createNewFile("test_file", Collections.emptyMap(), getSecondInstant().toString());
 

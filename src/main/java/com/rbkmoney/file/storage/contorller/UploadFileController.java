@@ -1,6 +1,7 @@
 package com.rbkmoney.file.storage.contorller;
 
 import com.rbkmoney.file.storage.service.StorageService;
+import com.rbkmoney.file.storage.service.exception.StorageFileNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -9,8 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.FileNotFoundException;
 
 import static com.rbkmoney.file.storage.util.CheckerUtil.checkFile;
 import static com.rbkmoney.file.storage.util.CheckerUtil.checkString;
@@ -33,7 +32,7 @@ public class UploadFileController {
             ResponseEntity<Object> responseEntity = ResponseEntity.ok().build();
             log.info("Response: ResponseEntity: {}", responseEntity);
             return responseEntity;
-        } catch (FileNotFoundException e) {
+        } catch (StorageFileNotFoundException e) {
             log.error("Error when handleFileUpload e: ", e);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {

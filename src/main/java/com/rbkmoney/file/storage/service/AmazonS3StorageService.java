@@ -10,6 +10,7 @@ import com.rbkmoney.file.storage.NewFileResult;
 import com.rbkmoney.file.storage.configuration.properties.StorageProperties;
 import com.rbkmoney.file.storage.contorller.UploadFileController;
 import com.rbkmoney.file.storage.service.exception.StorageException;
+import com.rbkmoney.file.storage.service.exception.StorageFileNotFoundException;
 import com.rbkmoney.file.storage.util.DamselUtil;
 import com.rbkmoney.geck.common.util.TypeUtil;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,6 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -62,7 +62,7 @@ public class AmazonS3StorageService implements StorageService {
     }
 
     @Override
-    public FileData getFileData(String fileId) throws StorageException, FileNotFoundException {
+    public FileData getFileData(String fileId) throws StorageException {
         S3Object s3Object = getS3Object(fileId);
         checkFileStatus(s3Object);
         return extractFileData(s3Object.getObjectMetadata());
@@ -112,7 +112,7 @@ public class AmazonS3StorageService implements StorageService {
     }
 
     @Override
-    public URL generateDownloadUrl(String fileId, Instant expirationTime) throws StorageException, FileNotFoundException {
+    public URL generateDownloadUrl(String fileId, Instant expirationTime) throws StorageException {
         checkFileStatus(getS3Object(fileId));
         return generatePresignedUrl(fileId, expirationTime, HttpMethod.GET);
     }
@@ -161,7 +161,7 @@ public class AmazonS3StorageService implements StorageService {
         transferManager.shutdownNow(true);
     }
 
-    private S3Object getS3Object(String fileId) throws StorageException, FileNotFoundException {
+    private S3Object getS3Object(String fileId) throws StorageException {
         try {
             log.info(
                     "Trying to get file from storage, fileId='{}', bucketId='{}'",
@@ -189,7 +189,7 @@ public class AmazonS3StorageService implements StorageService {
         }
     }
 
-    private void checkFileStatus(S3Object s3Object) throws StorageException {
+    private void checkFileStatus(S3Object s3Object) throws StorageFileNotFoundException {
         log.info("Check file expiration and uploaded status: ETag='{}'", s3Object.getObjectMetadata().getETag());
         ObjectMetadata objectMetadata = s3Object.getObjectMetadata();
 
@@ -207,7 +207,7 @@ public class AmazonS3StorageService implements StorageService {
         }
 
         // если файл не соотвествует условиям, блокируем доступ к нему
-        throw new StorageException(String.format("File access error: fileId='%s', bucketId='%s', create a new file", s3Object.getKey(), bucketName));
+        throw new StorageFileNotFoundException(String.format("File access error: fileId='%s', bucketId='%s', create a new file", s3Object.getKey(), bucketName));
     }
 
     private FileData extractFileData(ObjectMetadata objectMetadata) {
@@ -233,7 +233,7 @@ public class AmazonS3StorageService implements StorageService {
         return new FileData(fileId, fileName, createdAt, md5, metadata);
     }
 
-    private URL generatePresignedUrl(String fileId, Instant expirationTime, HttpMethod httpMethod) throws StorageException, FileNotFoundException {
+    private URL generatePresignedUrl(String fileId, Instant expirationTime, HttpMethod httpMethod) throws StorageException {
         try {
             log.info(
                     "Trying to generate presigned url, fileId='{}', bucketId='{}', expirationTime='{}', httpMethod='{}'",
@@ -348,9 +348,9 @@ public class AmazonS3StorageService implements StorageService {
         return fileId;
     }
 
-    private void checkNullable(Object object, String fileId, String objectType) throws FileNotFoundException {
+    private void checkNullable(Object object, String fileId, String objectType) throws StorageFileNotFoundException {
         if (Objects.isNull(object)) {
-            throw new FileNotFoundException(String.format(objectType + " is null, fileId='%s', bucketId='%s'", fileId, bucketName));
+            throw new StorageFileNotFoundException(String.format(objectType + " is null, fileId='%s', bucketId='%s'", fileId, bucketName));
         }
     }
 
