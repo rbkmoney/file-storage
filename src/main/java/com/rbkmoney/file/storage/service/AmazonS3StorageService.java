@@ -27,9 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -121,19 +118,22 @@ public class AmazonS3StorageService implements StorageService {
     public void uploadFile(String fileId, MultipartFile multipartFile) throws StorageException, IOException {
         log.info("Trying to upload file to storage, filename='{}', bucketId='{}'", fileId, bucketName);
 
-        Path tempFile = Files.createTempFile("", "temp");
-
         try {
-            Files.copy(multipartFile.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
-
             S3Object object = getS3Object(fileId);
 
             checkFileStatus(object);
 
-            object.getObjectMetadata().addUserMetadata(FILE_UPLOADED, "true");
-            object.getObjectMetadata().addUserMetadata(FILEDATA_MD_5, calculateMd5(tempFile));
+            ObjectMetadata objectMetadata = object.getObjectMetadata();
+            objectMetadata.addUserMetadata(FILE_UPLOADED, "true");
+            objectMetadata.addUserMetadata(FILEDATA_MD_5, calculateMd5(multipartFile.getBytes()));
+            objectMetadata.setContentLength(multipartFile.getSize());
 
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, fileId, tempFile.toFile());
+            PutObjectRequest putObjectRequest = new PutObjectRequest(
+                    bucketName,
+                    fileId,
+                    multipartFile.getInputStream(),
+                    objectMetadata
+            );
             putObjectRequest.setMetadata(object.getObjectMetadata());
             s3Client.putObject(putObjectRequest);
 
@@ -151,8 +151,6 @@ public class AmazonS3StorageService implements StorageService {
                     ),
                     ex
             );
-        } finally {
-            Files.deleteIfExists(tempFile);
         }
     }
 
@@ -354,7 +352,7 @@ public class AmazonS3StorageService implements StorageService {
         }
     }
 
-    private String calculateMd5(Path tempFile) throws IOException {
-        return DigestUtils.md5Hex(Files.newInputStream(tempFile));
+    private String calculateMd5(byte[] data) throws IOException {
+        return DigestUtils.md5Hex(data);
     }
 }
