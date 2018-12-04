@@ -1,34 +1,47 @@
 #!groovy
-// -*- mode: groovy -*-
-
-build('file-storage', 'docker-host') {
+build('file-storage', 'java-maven') {
     checkoutRepo()
-    loadBuildUtils()
 
-    def pipeDefault
-    def gitUtils
-    runStage('load pipeline') {
-        env.JENKINS_LIB = "build_utils/jenkins_lib"
-        pipeDefault = load("${env.JENKINS_LIB}/pipeDefault.groovy")
-        gitUtils = load("${env.JENKINS_LIB}/gitUtils.groovy")
-    }
+    def serviceName = env.REPO_NAME
+    def mvnArgs = '-DjvmArgs="-Xmx256m"'
 
-    pipeDefault() {
-
-        runStage('compile') {
-            sh "make wc_compile"
-        }
-
-        // Java
-        runStage('Execute build container') {
-            withCredentials([[$class: 'FileBinding', credentialsId: 'java-maven-settings.xml', variable: 'SETTINGS_XML']]) {
-                if (env.BRANCH_NAME == 'master' || env.BRANCH_NAME.startsWith('epic/')) {
-                    sh 'make SETTINGS_XML=${SETTINGS_XML} BRANCH_NAME=${BRANCH_NAME} wc_java.deploy'
-                } else {
-                    sh 'make SETTINGS_XML=${SETTINGS_XML} wc_java.compile'
-                }
+    // Run mvn and generate docker file
+    runStage('Maven package') {
+        withCredentials([[$class: 'FileBinding', credentialsId: 'java-maven-settings.xml', variable: 'SETTINGS_XML']]) {
+            def mvn_command_arguments = ' --batch-mode --settings  $SETTINGS_XML -P ci ' +
+                    " -Dgit.branch=${env.BRANCH_NAME} " +
+                    " ${mvnArgs}"
+            if (env.BRANCH_NAME == 'master') {
+                sh 'mvn deploy' + mvn_command_arguments
+            } else {
+                sh 'mvn package' + mvn_command_arguments
             }
         }
+    }
 
+    def serviceImage;
+    def imgShortName = 'rbkmoney/' + "${serviceName}" + ':' + '$COMMIT_ID';
+    getCommitId()
+    runStage('Build Service image') {
+        serviceImage = docker.build(imgShortName, '-f ./target/Dockerfile ./target')
+    }
+
+    try {
+        if (env.BRANCH_NAME == 'master') {
+            runStage('Push Service image') {
+                docker.withRegistry('https://dr.rbkmoney.com/v2/', 'dockerhub-rbkmoneycibot') {
+                    serviceImage.push();
+                }
+                // Push under 'withRegistry' generates 2d record with 'long name' in local docker registry.
+                // Untag the long-name
+                sh "docker rmi dr.rbkmoney.com/${imgShortName}"
+            }
+        }
+    }
+    finally {
+        runStage('Remove local image') {
+            // Remove the image to keep Jenkins runner clean.
+            sh "docker rmi ${imgShortName}"
+        }
     }
 }
