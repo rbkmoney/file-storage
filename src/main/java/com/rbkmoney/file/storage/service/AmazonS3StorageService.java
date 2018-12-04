@@ -5,6 +5,7 @@ import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.*;
 import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.services.s3.transfer.Upload;
 import com.rbkmoney.file.storage.FileData;
 import com.rbkmoney.file.storage.NewFileResult;
 import com.rbkmoney.file.storage.configuration.properties.StorageProperties;
@@ -135,7 +136,13 @@ public class AmazonS3StorageService implements StorageService {
                     objectMetadata
             );
             putObjectRequest.setMetadata(object.getObjectMetadata());
-            s3Client.putObject(putObjectRequest);
+
+            Upload upload = transferManager.upload(putObjectRequest);
+            try {
+                upload.waitForUploadResult();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
 
             log.info(
                     "File have been successfully uploaded, fileId='{}', bucketId='{}'",
@@ -339,11 +346,7 @@ public class AmazonS3StorageService implements StorageService {
     }
 
     private String getFileId() {
-        String fileId;
-        do {
-            fileId = UUID.randomUUID().toString();
-        } while (s3Client.doesObjectExist(bucketName, fileId));
-        return fileId;
+        return UUID.randomUUID().toString();
     }
 
     private void checkNullable(Object object, String fileId, String objectType) throws StorageFileNotFoundException {
