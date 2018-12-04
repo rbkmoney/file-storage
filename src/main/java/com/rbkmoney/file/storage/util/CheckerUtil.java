@@ -9,22 +9,22 @@ public class CheckerUtil {
 
     private static final Pattern FILE_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9 ,-_.]*$");
 
-    public static void checkString(String string, String exMessage) throws RuntimeException {
+    public static void checkString(String string, String exMessage) throws IllegalArgumentException {
         if (Strings.isNullOrEmpty(string)) {
-            throw new RuntimeException(exMessage);
+            throw new IllegalArgumentException(exMessage);
         }
     }
 
-    public static void checkFileName(String string, String exMessage) throws RuntimeException {
+    public static void checkFileName(String string, String exMessage) throws IllegalArgumentException {
         if (!FILE_NAME_PATTERN.matcher(string).matches()) {
-            throw new RuntimeException(exMessage);
+            throw new IllegalArgumentException(exMessage);
         }
     }
 
 
-    public static void checkFile(MultipartFile file, String exMessage) throws RuntimeException {
+    public static void checkFile(MultipartFile file, String exMessage) throws IllegalArgumentException {
         if (file.isEmpty()) {
-            throw new RuntimeException(exMessage);
+            throw new IllegalArgumentException(exMessage);
         }
     }
 }

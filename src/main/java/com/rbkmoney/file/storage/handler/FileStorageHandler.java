@@ -53,7 +53,7 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             log.info("Request createNewFile fileName: {}, metadata: {}, expiresAt: {}", fileName, metadata, expiresAt);
             checkString(fileName, "Bad request parameter, fileName required and not empty arg");
             checkFileName(fileName, "Bad request parameter, enter the correct fileName");
-            checkString(expiresAt, "Bad request parameter, expiresAt required and not empty arg");
+            // stringToInstant уже содержит проверки аргемента
             Instant instant = TypeUtil.stringToInstant(expiresAt);
             NewFileResult newFile = storageService.createNewFile(fileName, metadata, instant);
             log.info("Response: newFileResult: {}", newFile);
@@ -76,6 +76,7 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             log.info("Request generateDownloadUrl fileId: {}, expiresAt: {}", fileId, expiresAt);
             checkString(fileId, "Bad request parameter, fileId required and not empty arg");
             checkString(expiresAt, "Bad request parameter, expiresAt required and not empty arg");
+            // stringToInstant уже содержит проверки аргемента
             Instant instant = TypeUtil.stringToInstant(expiresAt);
             URL url = storageService.generateDownloadUrl(fileId, instant);
             log.info("Response: url: {}", url);

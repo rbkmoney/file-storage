@@ -48,6 +48,9 @@ public class UploadFileController {
         } catch (StorageFileNotFoundException e) {
             log.error("Error when handleFileUpload e: ", e);
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            log.error("Error when handleFileUpload e: ", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             log.error("Error when handleFileUpload e: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to request upload file");
