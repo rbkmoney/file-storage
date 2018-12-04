@@ -16,7 +16,6 @@ import com.rbkmoney.file.storage.util.DamselUtil;
 import com.rbkmoney.geck.common.util.TypeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
@@ -42,7 +41,6 @@ public class AmazonS3StorageService implements StorageService {
     private static final String FILEDATA_FILE_ID = "x-rbkmoney-filedata-file-id";
     private static final String FILEDATA_FILE_NAME = "x-rbkmoney-filedata-file-name";
     private static final String FILEDATA_CREATED_AT = "x-rbkmoney-filedata-created-at";
-    private static final String FILEDATA_MD_5 = "x-rbkmoney-filedata-md5";
     private static final String FILEDATA_METADATA = "x-rbkmoney-filedata-metadata-";
 
     private final TransferManager transferManager;
@@ -81,7 +79,6 @@ public class AmazonS3StorageService implements StorageService {
                     fileId,
                     fileName,
                     createdAt,
-                    "",
                     metadata
             );
 
@@ -126,7 +123,6 @@ public class AmazonS3StorageService implements StorageService {
 
             ObjectMetadata objectMetadata = object.getObjectMetadata();
             objectMetadata.addUserMetadata(FILE_UPLOADED, "true");
-            objectMetadata.addUserMetadata(FILEDATA_MD_5, calculateMd5(multipartFile.getBytes()));
             objectMetadata.setContentLength(multipartFile.getSize());
 
             PutObjectRequest putObjectRequest = new PutObjectRequest(
@@ -220,7 +216,6 @@ public class AmazonS3StorageService implements StorageService {
         String fileId = getUserMetadataParameter(objectMetadata, FILEDATA_FILE_ID);
         String fileName = getUserMetadataParameter(objectMetadata, FILEDATA_FILE_NAME);
         String createdAt = getUserMetadataParameter(objectMetadata, FILEDATA_CREATED_AT);
-        String md5 = getUserMetadataParameter(objectMetadata, FILEDATA_MD_5);
 
         Map<String, com.rbkmoney.damsel.msgpack.Value> metadata = objectMetadata.getUserMetadata().entrySet().stream()
                 .filter(entry -> entry.getKey().startsWith(FILEDATA_METADATA) && entry.getValue() != null)
@@ -235,7 +230,7 @@ public class AmazonS3StorageService implements StorageService {
                 fileId,
                 bucketName
         );
-        return new FileData(fileId, fileName, createdAt, md5, metadata);
+        return new FileData(fileId, fileName, createdAt, metadata);
     }
 
     private URL generatePresignedUrl(String fileId, Instant expirationTime, HttpMethod httpMethod) throws StorageException {
@@ -300,7 +295,6 @@ public class AmazonS3StorageService implements StorageService {
         objectMetadata.addUserMetadata(FILEDATA_FILE_ID, fileData.getFileId());
         objectMetadata.addUserMetadata(FILEDATA_FILE_NAME, fileData.getFileName());
         objectMetadata.addUserMetadata(FILEDATA_CREATED_AT, fileData.getCreatedAt());
-        objectMetadata.addUserMetadata(FILEDATA_MD_5, fileData.getMd5());
         fileData.getMetadata().forEach(
                 (key, value) -> objectMetadata.addUserMetadata(FILEDATA_METADATA + key, DamselUtil.toJsonString(value))
         );
@@ -353,9 +347,5 @@ public class AmazonS3StorageService implements StorageService {
         if (Objects.isNull(object)) {
             throw new StorageFileNotFoundException(String.format(objectType + " is null, fileId='%s', bucketId='%s'", fileId, bucketName));
         }
-    }
-
-    private String calculateMd5(byte[] data) throws IOException {
-        return DigestUtils.md5Hex(data);
     }
 }
