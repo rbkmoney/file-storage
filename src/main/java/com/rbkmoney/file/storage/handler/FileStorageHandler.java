@@ -28,26 +28,6 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
     private final StorageService storageService;
 
     @Override
-    public FileData getFileData(String fileId) throws TException {
-        try {
-            log.info("Request getFileData fileId: {}", fileId);
-            checkString(fileId, "Bad request parameter, fileId required and not empty arg");
-            FileData fileData = storageService.getFileData(fileId);
-            log.info("Response: fileData: {}", fileData);
-            return fileData;
-        } catch (StorageFileNotFoundException e) {
-            log.error("Error when getFileData e: ", e);
-            throw new FileNotFound();
-        } catch (StorageException e) {
-            log.error("Error when getFileData e: ", e);
-            throw new WUnavailableResultException(e);
-        } catch (Exception e) {
-            log.error("Error when getFileData e: ", e);
-            throw new TException(e);
-        }
-    }
-
-    @Override
     public NewFileResult createNewFile(String fileName, Map<String, Value> metadata, String expiresAt) throws TException {
         try {
             log.info("Request createNewFile fileName: {}, metadata: {}, expiresAt: {}", fileName, metadata, expiresAt);
@@ -71,14 +51,14 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
     }
 
     @Override
-    public String generateDownloadUrl(String fileId, String expiresAt) throws TException {
+    public String generateDownloadUrl(String fileDataId, String expiresAt) throws TException {
         try {
-            log.info("Request generateDownloadUrl fileId: {}, expiresAt: {}", fileId, expiresAt);
-            checkString(fileId, "Bad request parameter, fileId required and not empty arg");
+            log.info("Request generateDownloadUrl fileDataId: {}, expiresAt: {}", fileDataId, expiresAt);
+            checkString(fileDataId, "Bad request parameter, fileDataId required and not empty arg");
             checkString(expiresAt, "Bad request parameter, expiresAt required and not empty arg");
             // stringToInstant уже содержит проверки аргемента
             Instant instant = TypeUtil.stringToInstant(expiresAt);
-            URL url = storageService.generateDownloadUrl(fileId, instant);
+            URL url = storageService.generateDownloadUrl(fileDataId, instant);
             log.info("Response: url: {}", url);
             return url.toString();
         } catch (StorageFileNotFoundException e) {
@@ -89,6 +69,26 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             throw new WUnavailableResultException(e);
         } catch (Exception e) {
             log.error("Error when generateDownloadUrl e: ", e);
+            throw new TException(e);
+        }
+    }
+
+    @Override
+    public FileData getFileData(String fileDataId) throws TException {
+        try {
+            log.info("Request getFileData fileDataId: {}", fileDataId);
+            checkString(fileDataId, "Bad request parameter, fileDataId required and not empty arg");
+            FileData fileData = storageService.getFileData(fileDataId);
+            log.info("Response: fileData: {}", fileData);
+            return fileData;
+        } catch (StorageFileNotFoundException e) {
+            log.error("Error when getFileData e: ", e);
+            throw new FileNotFound();
+        } catch (StorageException e) {
+            log.error("Error when getFileData e: ", e);
+            throw new WUnavailableResultException(e);
+        } catch (Exception e) {
+            log.error("Error when getFileData e: ", e);
             throw new TException(e);
         }
     }

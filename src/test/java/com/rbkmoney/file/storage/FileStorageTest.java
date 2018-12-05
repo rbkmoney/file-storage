@@ -1,33 +1,29 @@
 package com.rbkmoney.file.storage;
 
-import com.rbkmoney.file.storage.service.StorageService;
+import com.rbkmoney.damsel.msgpack.Value;
 import org.apache.thrift.TException;
 import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 // все тесты в 1 классе , чтобы сэкономить время на поднятии тест контейнера
 public class FileStorageTest extends AbstractIntegrationTest {
-
-    @Autowired
-    private StorageService storageService;
 
     @Test
     public void uploadAndDownloadFileFromStorageTest() throws IOException, TException {
@@ -37,35 +33,23 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         try {
             // создание нового файла
-            NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), getDayInstant().toString());
-            String uploadUrl = fileResult.getUploadUrl();
-
-            // запись данных в файл
-            Files.write(testFile, "Test".getBytes());
-
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            // запись файла в тело запроса
-            body.add("file", new FileSystemResource(testFile.toFile()));
-
-            HttpHeaders headers = new HttpHeaders();
-
-            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-            // запись файла в хранилище через ссылку доступа
-            RestTemplate restTemplate = new RestTemplate();
-            restTemplate.postForEntity(uploadUrl, requestEntity, Void.class);
+            String expirationTime = getDayInstant().toString();
+            NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
+            uploadTestData(fileResult);
 
             // генерация url с доступом только для загрузки
-            String urs = client.generateDownloadUrl(fileResult.getFileData().getFileId(), getDayInstant().toString());
+            URL downloadUrl = new URL(client.generateDownloadUrl(fileResult.getFileData().getFiledataId(), expirationTime));
 
-            URL url = new URL(urs);
-
-            HttpURLConnection urlConnection = getHttpURLConnection(url, false, "GET");
-            InputStream inputStream = urlConnection.getInputStream();
+            HttpURLConnection downloadUrlConnection = getHttpURLConnection(downloadUrl, false, "GET");
+            InputStream inputStream = downloadUrlConnection.getInputStream();
 
             // чтение записанного файла из хранилища
             Files.copy(inputStream, testActualFile, StandardCopyOption.REPLACE_EXISTING);
 
+            // testFile пустой, testActualFile содержит данные из хранилища
+            assertNotEquals(Files.readAllLines(testFile), Files.readAllLines(testActualFile));
+
+            Files.write(testFile, "test".getBytes());
             assertEquals(Files.readAllLines(testFile), Files.readAllLines(testActualFile));
         } finally {
             Files.deleteIfExists(testFile);
@@ -74,80 +58,129 @@ public class FileStorageTest extends AbstractIntegrationTest {
     }
 
     @Test
-    public void downloadUrlTest() throws TException, IOException {
-        Path testFile = Files.createTempFile("", "test_file");
+    public void uploadUrlConnectionAccessTest() throws IOException, TException {
+        // создание файла с доступом к файлу на день
+        String expirationTime = getDayInstant().toString();
+        NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
 
-        Path testActualFile = Files.createTempFile("", "test_actual_file");
+        String fileDataId = fileResult.getFileData().getFiledataId();
 
-        try {
-            Files.write(testFile, new byte[0]);
+        // ошибка доступа - файла не существует, тк не было upload
+        assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(fileDataId, expirationTime));
+        assertThrows(FileNotFound.class, () -> client.getFileData(fileDataId));
 
-            // создание нового файла
-            NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), getDayInstant().toString());
+        URL uploadUrl = new URL(fileResult.getUploadUrl());
 
-            // генерация url с доступом только для загрузки
-            URL url = storageService.generateDownloadUrl(fileResult.getFileData().getFileId(), getDayInstant());
+        // ошибка при запросе по url методом get
+        assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(uploadUrl, false, "GET").getResponseCode());
 
-            // с данной ссылкой нельзя записывать
-            assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(url, true, "PUT").getResponseCode());
+        // Length Required при запросе по url методом put
+        assertEquals(HttpStatus.LENGTH_REQUIRED.value(), getHttpURLConnection(uploadUrl, true, "PUT").getResponseCode());
 
-            // можно читать
-            assertEquals(HttpStatus.OK.value(), getHttpURLConnection(url, false, "GET").getResponseCode());
-
-            // чтение данных
-            HttpURLConnection urlConnection = getHttpURLConnection(url, false, "GET");
-            InputStream inputStream = urlConnection.getInputStream();
-
-            // чтение записанного файла из хранилища
-            Files.copy(inputStream, testActualFile, StandardCopyOption.REPLACE_EXISTING);
-
-            assertEquals(Files.readAllLines(testFile), Files.readAllLines(testActualFile));
-        } finally {
-            Files.deleteIfExists(testFile);
-            Files.deleteIfExists(testActualFile);
-        }
-    }
-
-    @Test(expected = FileNotFound.class)
-    public void expiredTimeForFileDataInMetadataTest() throws TException, InterruptedException {
-        NewFileResult testFile = client.createNewFile("test_file", Collections.emptyMap(), getSecondInstant().toString());
-
-        Thread.sleep(1000);
-
-        client.getFileData(testFile.getFileData().getFileId());
-    }
-
-    @Test(expected = FileNotFound.class)
-    public void expiredTimeForGenerateUrlInMetadataTest() throws TException, InterruptedException {
-        NewFileResult testFile = client.createNewFile("test_file", Collections.emptyMap(), getSecondInstant().toString());
-
-        Thread.sleep(1000);
-
-        client.generateDownloadUrl(testFile.getFileData().getFileId(), getSecondInstant().toString());
+        uploadTestData(fileResult);
     }
 
     @Test
-    public void expiredTimeForGenerateUrlConnectionInCephTest() throws TException, IOException, InterruptedException {
-        NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), getDayInstant().toString());
+    public void downloadUrlConnectionAccessTest() throws IOException, TException {
+        // создание файла с доступом к файлу на день
+        String expirationTime = getDayInstant().toString();
+        NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
 
-        URL url = storageService.generateDownloadUrl(fileResult.getFileData().getFileId(), getSecondInstant());
+        String fileDataId = fileResult.getFileData().getFiledataId();
 
+        // ошибка доступа - файла не существует, тк не было upload
+        assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(fileDataId, expirationTime));
+        assertThrows(FileNotFound.class, () -> client.getFileData(fileDataId));
+
+        // upload тестовых данных в хранилище
+        uploadTestData(fileResult);
+
+        // генерация url с доступом только для загрузки
+        URL url = new URL(client.generateDownloadUrl(fileDataId, expirationTime));
+
+        // с данной ссылкой нельзя записывать
+        assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(url, true, "PUT").getResponseCode());
+
+        // можно читать
         assertEquals(HttpStatus.OK.value(), getHttpURLConnection(url, false, "GET").getResponseCode());
+    }
 
+    @Test
+    public void expirationTimeTest() throws TException, InterruptedException, IOException {
+        // создание файла с доступом к файлу на день
+        String expirationTime = getDayInstant().toString();
+        NewFileResult validFileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
+
+        String validFileDataId = validFileResult.getFileData().getFiledataId();
+
+        // ошибка доступа - файла не существует, тк не было upload
+        assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(validFileDataId, expirationTime));
+        assertThrows(FileNotFound.class, () -> client.getFileData(validFileDataId));
+
+        // задержка перед upload для теста expiration
+        Thread.sleep(1000);
+
+        // сохранение тестовых данных в хранилище
+        uploadTestData(validFileResult);
+
+        // доступ есть
+        client.getFileData(validFileDataId);
+        client.generateDownloadUrl(validFileDataId, getDayInstant().toString());
+
+        // - - - - - сделаем задержку больше expiration
+        // создание файла с доступом к файлу на секунду
+        NewFileResult throwingFileResult = client.createNewFile("test_file", Collections.emptyMap(), getSecondInstant().toString());
+
+        String throwingFileDataId = throwingFileResult.getFileData().getFiledataId();
+
+        // ошибка доступа - файла не существует, тк не было upload
+        assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(throwingFileDataId, expirationTime));
+        assertThrows(FileNotFound.class, () -> client.getFileData(throwingFileDataId));
+
+        // задержка перед upload для теста expiration
         Thread.sleep(2000);
 
-        assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(url, false, "GET").getResponseCode());
+        // сохранение тестовых данных в хранилище вызывает ошибку доступа
+        assertThrows(AssertionError.class, () -> uploadTestData(throwingFileResult));
+
+        // ошибка доступа
+        assertThrows(FileNotFound.class, () -> client.getFileData(throwingFileDataId));
+        assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(throwingFileDataId, expirationTime));
     }
 
     @Test
-    public void extractMetadataTest() throws TException {
+    public void extractMetadataTest() throws TException, IOException {
+        String expirationTime = getDayInstant().toString();
         String fileName = "test_file";
-        NewFileResult fileResult = client.createNewFile(fileName, Collections.emptyMap(), getDayInstant().toString());
+        Map<String, Value> metadata = new HashMap<String, Value>() {{
+            put("key1", Value.b(true));
+            put("key2", Value.i(1));
+            put("key3", Value.flt(1));
+            put("key4", Value.arr(new ArrayList<>()));
+            put("key5", Value.str("test"));
+            put("key6", Value.bin(new byte[]{}));
+        }};
+        NewFileResult fileResult = client.createNewFile(fileName, metadata, expirationTime);
+        uploadTestData(fileResult);
 
         assertEquals(fileResult.getFileData().getFileName(), fileName);
 
-        FileData fileData = storageService.getFileData(fileResult.getFileData().getFileId());
+        FileData fileData = client.getFileData(fileResult.getFileData().getFiledataId());
 
         assertEquals(fileData, fileResult.getFileData());
+    }
+
+    private void uploadTestData(final NewFileResult fileResult) throws IOException {
+        // запись данных методом put
+        URL uploadUrl = new URL(fileResult.getUploadUrl());
+
+        HttpURLConnection uploadUrlConnection = getHttpURLConnection(uploadUrl, true, "PUT");
+
+        OutputStreamWriter out = new OutputStreamWriter(uploadUrlConnection.getOutputStream());
+        out.write("test");
+        out.close();
+
+        // чтобы завершить загрузку вызываем getResponseCode
+        assertEquals(HttpStatus.OK.value(), uploadUrlConnection.getResponseCode());
     }
 }
