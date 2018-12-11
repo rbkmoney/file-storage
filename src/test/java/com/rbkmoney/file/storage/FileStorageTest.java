@@ -33,7 +33,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         try {
             // создание нового файла
-            String expirationTime = getDayInstant().toString();
+            String expirationTime = generateCurrentTimePlusDay().toString();
             NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
             uploadTestData(fileResult);
 
@@ -60,7 +60,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
     @Test
     public void uploadUrlConnectionAccessTest() throws IOException, TException {
         // создание файла с доступом к файлу на день
-        String expirationTime = getDayInstant().toString();
+        String expirationTime = generateCurrentTimePlusDay().toString();
         NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
 
         String fileDataId = fileResult.getFileData().getFiledataId();
@@ -83,7 +83,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
     @Test
     public void downloadUrlConnectionAccessTest() throws IOException, TException {
         // создание файла с доступом к файлу на день
-        String expirationTime = getDayInstant().toString();
+        String expirationTime = generateCurrentTimePlusDay().toString();
         NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
 
         String fileDataId = fileResult.getFileData().getFiledataId();
@@ -108,7 +108,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
     @Test
     public void expirationTimeTest() throws TException, InterruptedException, IOException {
         // создание файла с доступом к файлу на день
-        String expirationTime = getDayInstant().toString();
+        String expirationTime = generateCurrentTimePlusDay().toString();
         NewFileResult validFileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
 
         String validFileDataId = validFileResult.getFileData().getFiledataId();
@@ -125,11 +125,11 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         // доступ есть
         client.getFileData(validFileDataId);
-        client.generateDownloadUrl(validFileDataId, getDayInstant().toString());
+        client.generateDownloadUrl(validFileDataId, generateCurrentTimePlusDay().toString());
 
         // - - - - - сделаем задержку больше expiration
         // создание файла с доступом к файлу на секунду
-        NewFileResult throwingFileResult = client.createNewFile("test_file", Collections.emptyMap(), getSecondInstant().toString());
+        NewFileResult throwingFileResult = client.createNewFile("test_file", Collections.emptyMap(), generateCurrentTimePlusSecond().toString());
 
         String throwingFileDataId = throwingFileResult.getFileData().getFiledataId();
 
@@ -150,7 +150,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
     @Test
     public void extractMetadataTest() throws TException, IOException {
-        String expirationTime = getDayInstant().toString();
+        String expirationTime = generateCurrentTimePlusDay().toString();
         String fileName = "test_file";
         Map<String, Value> metadata = new HashMap<String, Value>() {{
             put("key1", Value.b(true));

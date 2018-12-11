@@ -120,7 +120,7 @@ public class AmazonS3StorageService implements StorageService {
             );
             GetObjectRequest getObjectRequest = new GetObjectRequest(bucketName, fileDataId);
             S3Object object = s3Client.getObject(getObjectRequest);
-            checkNullable(object, fileDataId, "File");
+            checkNotNull(object, fileDataId, "File");
             log.info(
                     "File have been successfully got from storage, fileDataId='{}', bucketId='{}'",
                     fileDataId,
@@ -190,7 +190,7 @@ public class AmazonS3StorageService implements StorageService {
                     .withMethod(httpMethod)
                     .withExpiration(Date.from(expirationTime));
             URL url = s3Client.generatePresignedUrl(request);
-            checkNullable(url, fileId, "Presigned url");
+            checkNotNull(url, fileId, "Presigned url");
             log.info(
                     "Presigned url have been successfully generated, url='{}', fileId='{}', bucketId='{}', expirationTime='{}', httpMethod='{}'",
                     url,
@@ -275,7 +275,7 @@ public class AmazonS3StorageService implements StorageService {
         return UUID.randomUUID().toString();
     }
 
-    private void checkNullable(Object object, String fileId, String objectType) throws StorageFileNotFoundException {
+    private void checkNotNull(Object object, String fileId, String objectType) throws StorageFileNotFoundException {
         if (Objects.isNull(object)) {
             throw new StorageFileNotFoundException(String.format(objectType + " is null, fileId='%s', bucketId='%s'", fileId, bucketName));
         }

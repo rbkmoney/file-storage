@@ -39,13 +39,13 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             log.info("Response: newFileResult: {}", newFile);
             return newFile;
         } catch (StorageFileNotFoundException e) {
-            log.error("Error when createNewFile e: ", e);
+            log.warn("Warn when createNewFile: file not found");
             throw new FileNotFound();
         } catch (StorageException e) {
-            log.error("Error when createNewFile e: ", e);
+            log.warn("Warn when createNewFile: storage problem");
             throw new WUnavailableResultException(e);
         } catch (Exception e) {
-            log.error("Error when createNewFile e: ", e);
+            log.error("Error when createNewFile");
             throw new TException(e);
         }
     }
@@ -62,13 +62,13 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             log.info("Response: url: {}", url);
             return url.toString();
         } catch (StorageFileNotFoundException e) {
-            log.error("Error when generateDownloadUrl e: ", e);
+            log.warn("Warn when createNewFile: file not found");
             throw new FileNotFound();
         } catch (StorageException e) {
-            log.error("Error when generateDownloadUrl e: ", e);
+            log.warn("Warn when createNewFile: storage problem");
             throw new WUnavailableResultException(e);
         } catch (Exception e) {
-            log.error("Error when generateDownloadUrl e: ", e);
+            log.error("Error when createNewFile");
             throw new TException(e);
         }
     }
@@ -82,13 +82,13 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             log.info("Response: fileData: {}", fileData);
             return fileData;
         } catch (StorageFileNotFoundException e) {
-            log.error("Error when getFileData e: ", e);
+            log.warn("Warn when createNewFile: file not found");
             throw new FileNotFound();
         } catch (StorageException e) {
-            log.error("Error when getFileData e: ", e);
+            log.warn("Warn when createNewFile: storage problem");
             throw new WUnavailableResultException(e);
         } catch (Exception e) {
-            log.error("Error when getFileData e: ", e);
+            log.error("Error when createNewFile");
             throw new TException(e);
         }
     }

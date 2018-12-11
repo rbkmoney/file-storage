@@ -5,7 +5,7 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.util.EnvironmentTestUtils;
+import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -65,19 +65,18 @@ public abstract class AbstractIntegrationTest {
     public static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
         @Override
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
-            EnvironmentTestUtils.addEnvironment(
-                    "testcontainers",
-                    configurableApplicationContext.getEnvironment(),
+            TestPropertyValues.of(
                     "storage.endpoint=" + cephContainer.getContainerIpAddress() + ":" + cephContainer.getMappedPort(80),
                     // в случае, если поднят локальный сторедж в контейнере
-                    //"storage.endpoint=localhost:32827",
+                    // "storage.endpoint=localhost:32827",
                     "storage.signingRegion=" + SIGNING_REGION,
                     "storage.accessKey=" + AWS_ACCESS_KEY,
                     "storage.secretKey=" + AWS_SECRET_KEY,
                     "storage.clientProtocol=" + PROTOCOL,
                     "storage.clientMaxErrorRetry=" + MAX_ERROR_RETRY,
                     "storage.bucketName=" + BUCKET_NAME
-            );
+            )
+                    .applyTo(configurableApplicationContext);
         }
     }
 
@@ -89,11 +88,11 @@ public abstract class AbstractIntegrationTest {
                 .build(FileStorageSrv.Iface.class);
     }
 
-    protected Instant getDayInstant() {
+    protected Instant generateCurrentTimePlusDay() {
         return LocalDateTime.now().plusDays(1).toInstant(getZoneOffset());
     }
 
-    protected Instant getSecondInstant() {
+    protected Instant generateCurrentTimePlusSecond() {
         return LocalDateTime.now().plusSeconds(1).toInstant(getZoneOffset());
     }
 
