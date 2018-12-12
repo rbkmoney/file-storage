@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 public class CheckerUtil {
 
-    private static final Pattern FILE_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9 ,-_.]*$");
+    private static final Pattern FILE_NAME_PATTERN = Pattern.compile("^[а-яА-Яa-zA-Z0-9 ,-_.]*$");
 
     public static void checkString(String string, String exMessage) throws IllegalArgumentException {
         if (Strings.isNullOrEmpty(string)) {

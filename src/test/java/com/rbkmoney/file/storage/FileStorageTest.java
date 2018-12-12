@@ -19,11 +19,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 // все тесты в 1 классе , чтобы сэкономить время на поднятии тест контейнера
 public class FileStorageTest extends AbstractIntegrationTest {
+
+    private static final String TEST_DATA = "test";
 
     @Test
     public void uploadAndDownloadFileFromStorageTest() throws IOException, TException {
@@ -46,10 +47,11 @@ public class FileStorageTest extends AbstractIntegrationTest {
             // чтение записанного файла из хранилища
             Files.copy(inputStream, testActualFile, StandardCopyOption.REPLACE_EXISTING);
 
-            // testFile пустой, testActualFile содержит данные из хранилища
-            assertNotEquals(Files.readAllLines(testFile), Files.readAllLines(testActualFile));
+            // testFile пустой
+            assertEquals(Files.readAllLines(testFile), Collections.emptyList());
 
-            Files.write(testFile, "test".getBytes());
+            // запись тестовых данных в пустой testFile
+            Files.write(testFile, TEST_DATA.getBytes());
             assertEquals(Files.readAllLines(testFile), Files.readAllLines(testActualFile));
         } finally {
             Files.deleteIfExists(testFile);
@@ -58,7 +60,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
     }
 
     @Test
-    public void uploadUrlConnectionAccessTest() throws IOException, TException {
+    public void accessErrorToMethodsTest() throws IOException, TException {
         // создание файла с доступом к файлу на день
         String expirationTime = generateCurrentTimePlusDay().toString();
         NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
@@ -68,6 +70,13 @@ public class FileStorageTest extends AbstractIntegrationTest {
         // ошибка доступа - файла не существует, тк не было upload
         assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(fileDataId, expirationTime));
         assertThrows(FileNotFound.class, () -> client.getFileData(fileDataId));
+    }
+
+    @Test
+    public void uploadUrlConnectionAccessTest() throws IOException, TException {
+        // создание файла с доступом к файлу на день
+        String expirationTime = generateCurrentTimePlusDay().toString();
+        NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
 
         URL uploadUrl = new URL(fileResult.getUploadUrl());
 
@@ -87,10 +96,6 @@ public class FileStorageTest extends AbstractIntegrationTest {
         NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
 
         String fileDataId = fileResult.getFileData().getFiledataId();
-
-        // ошибка доступа - файла не существует, тк не было upload
-        assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(fileDataId, expirationTime));
-        assertThrows(FileNotFound.class, () -> client.getFileData(fileDataId));
 
         // upload тестовых данных в хранилище
         uploadTestData(fileResult);
@@ -112,10 +117,6 @@ public class FileStorageTest extends AbstractIntegrationTest {
         NewFileResult validFileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
 
         String validFileDataId = validFileResult.getFileData().getFiledataId();
-
-        // ошибка доступа - файла не существует, тк не было upload
-        assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(validFileDataId, expirationTime));
-        assertThrows(FileNotFound.class, () -> client.getFileData(validFileDataId));
 
         // задержка перед upload для теста expiration
         Thread.sleep(1000);
@@ -157,7 +158,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
             put("key2", Value.i(1));
             put("key3", Value.flt(1));
             put("key4", Value.arr(new ArrayList<>()));
-            put("key5", Value.str("test"));
+            put("key5", Value.str(TEST_DATA));
             put("key6", Value.bin(new byte[]{}));
         }};
         NewFileResult fileResult = client.createNewFile(fileName, metadata, expirationTime);
@@ -177,7 +178,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
         HttpURLConnection uploadUrlConnection = getHttpURLConnection(uploadUrl, true, "PUT");
 
         OutputStreamWriter out = new OutputStreamWriter(uploadUrlConnection.getOutputStream());
-        out.write("test");
+        out.write(TEST_DATA);
         out.close();
 
         // чтобы завершить загрузку вызываем getResponseCode
