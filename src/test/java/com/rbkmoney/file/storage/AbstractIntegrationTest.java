@@ -16,10 +16,8 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -46,6 +44,7 @@ public abstract class AbstractIntegrationTest {
 
     protected FileStorageSrv.Iface client;
 
+    // for up local test version comment this ClassRule
     @ClassRule
     public static GenericContainer cephContainer = new GenericContainer("dr.rbkmoney.com/ceph-demo:latest")
             .withEnv("RGW_NAME", "localhost")
@@ -66,8 +65,9 @@ public abstract class AbstractIntegrationTest {
         @Override
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
             TestPropertyValues.of(
+                    // for up local test version comment this row
                     "storage.endpoint=" + cephContainer.getContainerIpAddress() + ":" + cephContainer.getMappedPort(80),
-                    // в случае, если поднят локальный сторедж в контейнере
+                    // for up local test version uncomment this row
                     // "storage.endpoint=localhost:32827",
                     "storage.signingRegion=" + SIGNING_REGION,
                     "storage.accessKey=" + AWS_ACCESS_KEY,
@@ -100,11 +100,17 @@ public abstract class AbstractIntegrationTest {
         return ZoneOffset.systemDefault().getRules().getOffset(LocalDateTime.now());
     }
 
-    protected HttpURLConnection getHttpURLConnection(URL url, boolean doOutput, String method) throws IOException {
+    protected HttpURLConnection getHttpURLConnection(URL url, String method, boolean doOutput) throws IOException {
+        return getHttpURLConnection(url, method, null, doOutput);
+    }
+
+    protected HttpURLConnection getHttpURLConnection(URL url, String method, String fileName, boolean doOutput) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setDoOutput(doOutput);
         connection.setRequestMethod(method);
+        if (fileName != null) {
+            connection.setRequestProperty("Content-Disposition", "attachment;filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()));
+        }
         return connection;
     }
-
 }

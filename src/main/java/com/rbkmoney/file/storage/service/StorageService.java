@@ -11,10 +11,10 @@ import java.util.Map;
 
 public interface StorageService {
 
-    NewFileResult createNewFile(String fileName, Map<String, Value> metadata, Instant expirationTime) throws StorageException;
+    NewFileResult createNewFile(Map<String, Value> metadata, Instant expirationTime) throws StorageException;
 
-    URL generateDownloadUrl(String fileDataId, Instant expirationTime) throws StorageException;
+    URL generateDownloadUrl(String id, Instant expirationTime) throws StorageException;
 
-    FileData getFileData(String fileDataId) throws StorageException;
+    FileData getFileData(String id) throws StorageException;
 
 }

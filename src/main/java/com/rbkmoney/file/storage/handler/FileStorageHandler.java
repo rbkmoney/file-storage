@@ -18,7 +18,6 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.Map;
 
-import static com.rbkmoney.file.storage.util.CheckerUtil.checkFileName;
 import static com.rbkmoney.file.storage.util.CheckerUtil.checkString;
 
 @RequiredArgsConstructor
@@ -28,14 +27,12 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
     private final StorageService storageService;
 
     @Override
-    public NewFileResult createNewFile(String fileName, Map<String, Value> metadata, String expiresAt) throws TException {
+    public NewFileResult createNewFile(Map<String, Value> metadata, String expiresAt) throws TException {
         try {
-            log.info("Request createNewFile fileName: {}, metadata: {}, expiresAt: {}", fileName, metadata, expiresAt);
-            checkString(fileName, "Bad request parameter, fileName required and not empty arg");
-            checkFileName(fileName, "Bad request parameter, enter the correct fileName");
+            log.info("Request createNewFile metadata: {}, expiresAt: {}", metadata, expiresAt);
             // stringToInstant уже содержит проверки аргемента
             Instant instant = TypeUtil.stringToInstant(expiresAt);
-            NewFileResult newFile = storageService.createNewFile(fileName, metadata, instant);
+            NewFileResult newFile = storageService.createNewFile(metadata, instant);
             log.info("Response: newFileResult: {}", newFile);
             return newFile;
         } catch (StorageFileNotFoundException e) {
@@ -51,14 +48,14 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
     }
 
     @Override
-    public String generateDownloadUrl(String fileDataId, String expiresAt) throws TException {
+    public String generateDownloadUrl(String id, String expiresAt) throws TException {
         try {
-            log.info("Request generateDownloadUrl fileDataId: {}, expiresAt: {}", fileDataId, expiresAt);
-            checkString(fileDataId, "Bad request parameter, fileDataId required and not empty arg");
+            log.info("Request generateDownloadUrl id: {}, expiresAt: {}", id, expiresAt);
+            checkString(id, "Bad request parameter, id required and not empty arg");
             checkString(expiresAt, "Bad request parameter, expiresAt required and not empty arg");
             // stringToInstant уже содержит проверки аргемента
             Instant instant = TypeUtil.stringToInstant(expiresAt);
-            URL url = storageService.generateDownloadUrl(fileDataId, instant);
+            URL url = storageService.generateDownloadUrl(id, instant);
             log.info("Response: url: {}", url);
             return url.toString();
         } catch (StorageFileNotFoundException e) {
@@ -74,11 +71,11 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
     }
 
     @Override
-    public FileData getFileData(String fileDataId) throws TException {
+    public FileData getFileData(String id) throws TException {
         try {
-            log.info("Request getFileData fileDataId: {}", fileDataId);
-            checkString(fileDataId, "Bad request parameter, fileDataId required and not empty arg");
-            FileData fileData = storageService.getFileData(fileDataId);
+            log.info("Request getFileData id: {}", id);
+            checkString(id, "Bad request parameter, id required and not empty arg");
+            FileData fileData = storageService.getFileData(id);
             log.info("Response: fileData: {}", fileData);
             return fileData;
         } catch (StorageFileNotFoundException e) {

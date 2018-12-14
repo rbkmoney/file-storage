@@ -10,6 +10,8 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -24,7 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 // все тесты в 1 классе , чтобы сэкономить время на поднятии тест контейнера
 public class FileStorageTest extends AbstractIntegrationTest {
 
-    private static final String TEST_DATA = "test";
+    private static final String FILE_DATA = "test";
+    private static final String FILE_NAME = "rainbow-champion";
 
     @Test
     public void uploadAndDownloadFileFromStorageTest() throws IOException, TException {
@@ -35,13 +38,13 @@ public class FileStorageTest extends AbstractIntegrationTest {
         try {
             // создание нового файла
             String expirationTime = generateCurrentTimePlusDay().toString();
-            NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
-            uploadTestData(fileResult);
+            NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
+            uploadTestData(fileResult, FILE_NAME, FILE_DATA);
 
             // генерация url с доступом только для загрузки
-            URL downloadUrl = new URL(client.generateDownloadUrl(fileResult.getFileData().getFiledataId(), expirationTime));
+            URL downloadUrl = new URL(client.generateDownloadUrl(fileResult.getId(), expirationTime));
 
-            HttpURLConnection downloadUrlConnection = getHttpURLConnection(downloadUrl, false, "GET");
+            HttpURLConnection downloadUrlConnection = getHttpURLConnection(downloadUrl, "GET", false);
             InputStream inputStream = downloadUrlConnection.getInputStream();
 
             // чтение записанного файла из хранилища
@@ -51,7 +54,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
             assertEquals(Files.readAllLines(testFile), Collections.emptyList());
 
             // запись тестовых данных в пустой testFile
-            Files.write(testFile, TEST_DATA.getBytes());
+            Files.write(testFile, FILE_DATA.getBytes());
             assertEquals(Files.readAllLines(testFile), Files.readAllLines(testActualFile));
         } finally {
             Files.deleteIfExists(testFile);
@@ -63,9 +66,9 @@ public class FileStorageTest extends AbstractIntegrationTest {
     public void accessErrorToMethodsTest() throws IOException, TException {
         // создание файла с доступом к файлу на день
         String expirationTime = generateCurrentTimePlusDay().toString();
-        NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
+        NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
 
-        String fileDataId = fileResult.getFileData().getFiledataId();
+        String fileDataId = fileResult.getId();
 
         // ошибка доступа - файла не существует, тк не было upload
         assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(fileDataId, expirationTime));
@@ -76,53 +79,53 @@ public class FileStorageTest extends AbstractIntegrationTest {
     public void uploadUrlConnectionAccessTest() throws IOException, TException {
         // создание файла с доступом к файлу на день
         String expirationTime = generateCurrentTimePlusDay().toString();
-        NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
+        NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
 
         URL uploadUrl = new URL(fileResult.getUploadUrl());
 
         // ошибка при запросе по url методом get
-        assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(uploadUrl, false, "GET").getResponseCode());
+        assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(uploadUrl, "GET", false).getResponseCode());
 
         // Length Required при запросе по url методом put
-        assertEquals(HttpStatus.LENGTH_REQUIRED.value(), getHttpURLConnection(uploadUrl, true, "PUT").getResponseCode());
+        assertEquals(HttpStatus.LENGTH_REQUIRED.value(), getHttpURLConnection(uploadUrl, "PUT", FILE_NAME, true).getResponseCode());
 
-        uploadTestData(fileResult);
+        uploadTestData(fileResult, FILE_NAME, FILE_DATA);
     }
 
     @Test
     public void downloadUrlConnectionAccessTest() throws IOException, TException {
         // создание файла с доступом к файлу на день
         String expirationTime = generateCurrentTimePlusDay().toString();
-        NewFileResult fileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
+        NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
 
-        String fileDataId = fileResult.getFileData().getFiledataId();
+        String fileDataId = fileResult.getId();
 
         // upload тестовых данных в хранилище
-        uploadTestData(fileResult);
+        uploadTestData(fileResult, FILE_NAME, FILE_DATA);
 
         // генерация url с доступом только для загрузки
         URL url = new URL(client.generateDownloadUrl(fileDataId, expirationTime));
 
         // с данной ссылкой нельзя записывать
-        assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(url, true, "PUT").getResponseCode());
+        assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(url, "PUT", FILE_NAME, true).getResponseCode());
 
         // можно читать
-        assertEquals(HttpStatus.OK.value(), getHttpURLConnection(url, false, "GET").getResponseCode());
+        assertEquals(HttpStatus.OK.value(), getHttpURLConnection(url, "GET", false).getResponseCode());
     }
 
     @Test
     public void expirationTimeTest() throws TException, InterruptedException, IOException {
         // создание файла с доступом к файлу на день
         String expirationTime = generateCurrentTimePlusDay().toString();
-        NewFileResult validFileResult = client.createNewFile("test_file", Collections.emptyMap(), expirationTime);
+        NewFileResult validFileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
 
-        String validFileDataId = validFileResult.getFileData().getFiledataId();
+        String validFileDataId = validFileResult.getId();
 
         // задержка перед upload для теста expiration
         Thread.sleep(1000);
 
         // сохранение тестовых данных в хранилище
-        uploadTestData(validFileResult);
+        uploadTestData(validFileResult, FILE_NAME, FILE_DATA);
 
         // доступ есть
         client.getFileData(validFileDataId);
@@ -130,9 +133,9 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         // - - - - - сделаем задержку больше expiration
         // создание файла с доступом к файлу на секунду
-        NewFileResult throwingFileResult = client.createNewFile("test_file", Collections.emptyMap(), generateCurrentTimePlusSecond().toString());
+        NewFileResult throwingFileResult = client.createNewFile(Collections.emptyMap(), generateCurrentTimePlusSecond().toString());
 
-        String throwingFileDataId = throwingFileResult.getFileData().getFiledataId();
+        String throwingFileDataId = throwingFileResult.getId();
 
         // ошибка доступа - файла не существует, тк не было upload
         assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(throwingFileDataId, expirationTime));
@@ -142,7 +145,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
         Thread.sleep(2000);
 
         // сохранение тестовых данных в хранилище вызывает ошибку доступа
-        assertThrows(AssertionError.class, () -> uploadTestData(throwingFileResult));
+        assertThrows(AssertionError.class, () -> uploadTestData(throwingFileResult, FILE_NAME, FILE_DATA));
 
         // ошибка доступа
         assertThrows(FileNotFound.class, () -> client.getFileData(throwingFileDataId));
@@ -152,33 +155,48 @@ public class FileStorageTest extends AbstractIntegrationTest {
     @Test
     public void extractMetadataTest() throws TException, IOException {
         String expirationTime = generateCurrentTimePlusDay().toString();
-        String fileName = "test_file";
         Map<String, Value> metadata = new HashMap<String, Value>() {{
             put("key1", Value.b(true));
             put("key2", Value.i(1));
             put("key3", Value.flt(1));
             put("key4", Value.arr(new ArrayList<>()));
-            put("key5", Value.str(TEST_DATA));
+            put("key5", Value.str(FILE_DATA));
             put("key6", Value.bin(new byte[]{}));
         }};
-        NewFileResult fileResult = client.createNewFile(fileName, metadata, expirationTime);
-        uploadTestData(fileResult);
 
-        assertEquals(fileResult.getFileData().getFileName(), fileName);
+        NewFileResult fileResult = client.createNewFile(metadata, expirationTime);
+        uploadTestData(fileResult, FILE_NAME, FILE_DATA);
 
-        FileData fileData = client.getFileData(fileResult.getFileData().getFiledataId());
+        FileData fileData = client.getFileData(fileResult.getId());
 
-        assertEquals(fileData, fileResult.getFileData());
+        assertEquals(fileData.getMetadata(), metadata);
     }
 
-    private void uploadTestData(final NewFileResult fileResult) throws IOException {
+    @Test
+    public void fileNameCyrillicTest() throws TException, IOException {
+        // создание файла с доступом к файлу на день
+        String expirationTime = generateCurrentTimePlusDay().toString();
+        NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
+
+        // upload тестовых данных в хранилище
+        String fileName = "csgo-лучше-чем-1.6";
+        uploadTestData(fileResult, fileName, FILE_DATA);
+
+        FileData fileData = client.getFileData(fileResult.getId());
+
+        // тут используется энкодер\декодер, потому что apache http клиент менять кодировку.
+        // при аплоаде напрямую по uploadUrl в ceph такой проблемы нет
+        assertEquals(fileName, URLDecoder.decode(fileData.getFileName(), StandardCharsets.UTF_8.name()));
+    }
+
+    private void uploadTestData(NewFileResult fileResult, String fileName, String testData) throws IOException {
         // запись данных методом put
         URL uploadUrl = new URL(fileResult.getUploadUrl());
 
-        HttpURLConnection uploadUrlConnection = getHttpURLConnection(uploadUrl, true, "PUT");
+        HttpURLConnection uploadUrlConnection = getHttpURLConnection(uploadUrl, "PUT", fileName, true);
 
         OutputStreamWriter out = new OutputStreamWriter(uploadUrlConnection.getOutputStream());
-        out.write(TEST_DATA);
+        out.write(testData);
         out.close();
 
         // чтобы завершить загрузку вызываем getResponseCode
