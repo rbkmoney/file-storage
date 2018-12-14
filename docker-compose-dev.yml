@@ -1,0 +1,13 @@
+version: '3'
+services:
+  ceph-container:
+    image: 'dr.rbkmoney.com/ceph-demo:latest'
+    ports:
+    - "32827:80"
+    environment:
+    - RGW_NAME=localhost
+    - NETWORK_AUTO_DETECT=4
+    - CEPH_DEMO_UID=ceph-test
+    - CEPH_DEMO_ACCESS_KEY=test
+    - CEPH_DEMO_SECRET_KEY=test
+    - CEPH_DEMO_BUCKET=TEST
