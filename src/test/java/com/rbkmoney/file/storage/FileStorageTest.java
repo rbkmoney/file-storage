@@ -47,7 +47,8 @@ public class FileStorageTest extends AbstractIntegrationTest {
         requestPut.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(FILE_NAME, StandardCharsets.UTF_8.name()));
         requestPut.setEntity(new FileEntity(path.toFile()));
 
-        httpClient.execute(requestPut);
+        HttpResponse response = httpClient.execute(requestPut);
+        Assert.assertEquals(response.getStatusLine().getStatusCode(), HttpStatus.OK.value());
 
         // генерация url с доступом только для загрузки
         String downloadUrl = client.generateDownloadUrl(fileResult.getFileDataId(), expirationTime);
