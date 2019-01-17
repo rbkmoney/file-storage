@@ -6,10 +6,10 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.*;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.Upload;
-import com.rbkmoney.damsel.msgpack.Value;
 import com.rbkmoney.file.storage.FileData;
 import com.rbkmoney.file.storage.NewFileResult;
 import com.rbkmoney.file.storage.configuration.properties.StorageProperties;
+import com.rbkmoney.file.storage.msgpack.Value;
 import com.rbkmoney.file.storage.service.exception.StorageException;
 import com.rbkmoney.file.storage.service.exception.StorageFileNotFoundException;
 import com.rbkmoney.file.storage.util.DamselUtil;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AmazonS3StorageService implements StorageService {
 
-    private static final String ID = "x-rbkmoney-id";
+    private static final String FILE_DATA_ID = "x-rbkmoney-file-data-id";
     private static final String FILE_ID = "x-rbkmoney-file-id";
     private static final String CREATED_AT = "x-rbkmoney-created-at";
     private static final String METADATA = "x-rbkmoney-metadata-";
@@ -57,10 +57,10 @@ public class AmazonS3StorageService implements StorageService {
         log.info("Trying to create new file to storage, bucketId='{}'", bucketName);
 
         InputStream emptyContent = getEmptyContent();
-        String id = createId();
+        String fileDataId = createId();
         String fileId = createId();
         FileDto fileDto = new FileDto(
-                id,
+                fileDataId,
                 fileId,
                 Instant.now().toString(),
                 metadata
@@ -69,19 +69,19 @@ public class AmazonS3StorageService implements StorageService {
         try {
             // в хранилище записывается неизменяемый фейковый файл с метаданными,
             // в котором находится ссылка на реальный файл
-            uploadRequest(id, fileDto, emptyContent);
+            uploadRequest(fileDataId, fileDto, emptyContent);
 
             // генерируем ссылку на выгрузку файла в хранилище напрямую в цеф по ключу fileId
             URL uploadUrl = generateUploadUrl(fileId, expirationTime);
 
-            log.info("File have been successfully created, id='{}', bucketId='{}'", id, bucketName);
+            log.info("File have been successfully created, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
 
-            return new NewFileResult(id, uploadUrl.toString());
+            return new NewFileResult(fileDataId, uploadUrl.toString());
         } catch (AmazonClientException ex) {
             throw new StorageException(
                     String.format(
-                            "Failed to create new file to storage, id='%s', bucketId='%s'",
-                            id,
+                            "Failed to create new file to storage, fileDataId='%s', bucketId='%s'",
+                            fileDataId,
                             bucketName
                     ),
                     ex
@@ -90,15 +90,15 @@ public class AmazonS3StorageService implements StorageService {
     }
 
     @Override
-    public URL generateDownloadUrl(String id, Instant expirationTime) throws StorageException {
-        String fileId = getFileDto(id).getFileId();
+    public URL generateDownloadUrl(String fileDataId, Instant expirationTime) throws StorageException {
+        String fileId = getFileDto(fileDataId).getFileId();
         // генерируем ссылку на загрузку файла из хранилища напрямую в цеф по ключу fileId
         return generatePresignedUrl(fileId, expirationTime, HttpMethod.GET);
     }
 
     @Override
-    public FileData getFileData(String id) throws StorageException {
-        FileDto fileDto = getFileDto(id);
+    public FileData getFileData(String fileDataId) throws StorageException {
+        FileDto fileDto = getFileDto(fileDataId);
 
         S3Object object = getS3Object(fileDto.getFileId());
 
@@ -112,14 +112,14 @@ public class AmazonS3StorageService implements StorageService {
             throw new StorageException(
                     String.format(
                             "Failed to extract fileName, id='%s', bucketId='%s'",
-                            id,
+                            fileDataId,
                             bucketName
                     ),
                     ex
             );
         }
 
-        return new FileData(fileDto.getId(), fileName, fileDto.getCreatedAt(), fileDto.getMetadata());
+        return new FileData(fileDto.getFileDataId(), fileName, fileDto.getCreatedAt(), fileDto.getMetadata());
     }
 
     @PreDestroy
@@ -171,15 +171,15 @@ public class AmazonS3StorageService implements StorageService {
 
     private FileDto getFileDtoByFakeFile(ObjectMetadata objectMetadata) {
         log.info("Trying to extract real file metadata by fake file from storage: ETag='{}'", objectMetadata.getETag());
-        String id = getUserMetadataParameter(objectMetadata, ID);
+        String id = getUserMetadataParameter(objectMetadata, FILE_DATA_ID);
         String fileId = getFileIdFromObjectMetadata(objectMetadata);
         String createdAt = getUserMetadataParameter(objectMetadata, CREATED_AT);
-        Map<String, com.rbkmoney.damsel.msgpack.Value> metadata = objectMetadata.getUserMetadata().entrySet().stream()
+        Map<String, Value> metadata = objectMetadata.getUserMetadata().entrySet().stream()
                 .filter(entry -> entry.getKey().startsWith(METADATA) && entry.getValue() != null)
                 .collect(
                         Collectors.toMap(
                                 o -> o.getKey().substring(METADATA.length()),
-                                o -> DamselUtil.fromJson(o.getValue(), com.rbkmoney.damsel.msgpack.Value.class)
+                                o -> DamselUtil.fromJson(o.getValue(), Value.class)
                         )
                 );
         log.info(
@@ -232,8 +232,8 @@ public class AmazonS3StorageService implements StorageService {
         return new ByteArrayInputStream(new byte[0]);
     }
 
-    private void uploadRequest(String id, FileDto fileDto, InputStream inputStream) throws AmazonClientException {
-        PutObjectRequest putObjectRequest = createS3Request(id, fileDto, inputStream);
+    private void uploadRequest(String fileDataId, FileDto fileDto, InputStream inputStream) throws AmazonClientException {
+        PutObjectRequest putObjectRequest = createS3Request(fileDataId, fileDto, inputStream);
 
         Upload upload = transferManager.upload(putObjectRequest);
         try {
@@ -243,10 +243,10 @@ public class AmazonS3StorageService implements StorageService {
         }
     }
 
-    private PutObjectRequest createS3Request(String id, FileDto fileDto, InputStream inputStream) {
+    private PutObjectRequest createS3Request(String fileDataId, FileDto fileDto, InputStream inputStream) {
         return new PutObjectRequest(
                 bucketName,
-                id,
+                fileDataId,
                 inputStream,
                 createObjectMetadata(fileDto)
         );
@@ -254,7 +254,7 @@ public class AmazonS3StorageService implements StorageService {
 
     private ObjectMetadata createObjectMetadata(FileDto fileDto) {
         ObjectMetadata objectMetadata = new ObjectMetadata();
-        objectMetadata.addUserMetadata(ID, fileDto.getId());
+        objectMetadata.addUserMetadata(FILE_DATA_ID, fileDto.getFileDataId());
         objectMetadata.addUserMetadata(FILE_ID, fileDto.getFileId());
         objectMetadata.addUserMetadata(CREATED_AT, fileDto.getCreatedAt());
         fileDto.getMetadata().forEach(
@@ -298,7 +298,7 @@ public class AmazonS3StorageService implements StorageService {
     @Getter
     private class FileDto {
 
-        private final String id;
+        private final String fileDataId;
         private final String fileId;
         private final String createdAt;
         private final Map<String, Value> metadata;

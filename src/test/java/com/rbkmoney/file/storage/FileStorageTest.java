@@ -1,6 +1,6 @@
 package com.rbkmoney.file.storage;
 
-import com.rbkmoney.damsel.msgpack.Value;
+import com.rbkmoney.file.storage.msgpack.Value;
 import org.apache.thrift.TException;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
@@ -42,7 +42,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
             uploadTestData(fileResult, FILE_NAME, FILE_DATA);
 
             // генерация url с доступом только для загрузки
-            URL downloadUrl = new URL(client.generateDownloadUrl(fileResult.getId(), expirationTime));
+            URL downloadUrl = new URL(client.generateDownloadUrl(fileResult.getFileDataId(), expirationTime));
 
             HttpURLConnection downloadUrlConnection = getHttpURLConnection(downloadUrl, "GET", false);
             InputStream inputStream = downloadUrlConnection.getInputStream();
@@ -68,7 +68,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
         String expirationTime = generateCurrentTimePlusDay().toString();
         NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
 
-        String fileDataId = fileResult.getId();
+        String fileDataId = fileResult.getFileDataId();
 
         // ошибка доступа - файла не существует, тк не было upload
         assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(fileDataId, expirationTime));
@@ -98,7 +98,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
         String expirationTime = generateCurrentTimePlusDay().toString();
         NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
 
-        String fileDataId = fileResult.getId();
+        String fileDataId = fileResult.getFileDataId();
 
         // upload тестовых данных в хранилище
         uploadTestData(fileResult, FILE_NAME, FILE_DATA);
@@ -119,7 +119,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
         String expirationTime = generateCurrentTimePlusDay().toString();
         NewFileResult validFileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
 
-        String validFileDataId = validFileResult.getId();
+        String validFileDataId = validFileResult.getFileDataId();
 
         // задержка перед upload для теста expiration
         Thread.sleep(1000);
@@ -135,7 +135,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
         // создание файла с доступом к файлу на секунду
         NewFileResult throwingFileResult = client.createNewFile(Collections.emptyMap(), generateCurrentTimePlusSecond().toString());
 
-        String throwingFileDataId = throwingFileResult.getId();
+        String throwingFileDataId = throwingFileResult.getFileDataId();
 
         // ошибка доступа - файла не существует, тк не было upload
         assertThrows(FileNotFound.class, () -> client.generateDownloadUrl(throwingFileDataId, expirationTime));
@@ -167,7 +167,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
         NewFileResult fileResult = client.createNewFile(metadata, expirationTime);
         uploadTestData(fileResult, FILE_NAME, FILE_DATA);
 
-        FileData fileData = client.getFileData(fileResult.getId());
+        FileData fileData = client.getFileData(fileResult.getFileDataId());
 
         assertEquals(fileData.getMetadata(), metadata);
     }
@@ -182,7 +182,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
         String fileName = "csgo-лучше-чем-1.6";
         uploadTestData(fileResult, fileName, FILE_DATA);
 
-        FileData fileData = client.getFileData(fileResult.getId());
+        FileData fileData = client.getFileData(fileResult.getFileDataId());
 
         // тут используется энкодер\декодер, потому что apache http клиент менять кодировку.
         // при аплоаде напрямую по uploadUrl в ceph такой проблемы нет
