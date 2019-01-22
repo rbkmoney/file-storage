@@ -36,7 +36,6 @@ public class FileStorageTest extends AbstractIntegrationTest {
     @Test
     public void fileUploadWithHttpClientBuilderTest() throws IOException, URISyntaxException, TException {
         String expirationTime = generateCurrentTimePlusDay().toString();
-        String expectedContent = "respect grac";
         HttpClient httpClient = HttpClientBuilder.create().build();
 
         NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
@@ -55,7 +54,7 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         HttpResponse responseGet = httpClient.execute(new HttpGet(downloadUrl));
         InputStream content = responseGet.getEntity().getContent();
-        Assert.assertEquals(expectedContent, IOUtils.toString(content, StandardCharsets.UTF_8));
+        Assert.assertEquals(getContent(Files.newInputStream(path)), getContent(content));
     }
 
     @Test
@@ -237,5 +236,9 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         URL url = Objects.requireNonNull(classLoader.getResource("respect"));
         return Paths.get(url.toURI());
+    }
+
+    private String getContent(InputStream content) throws IOException {
+        return IOUtils.toString(content, StandardCharsets.UTF_8);
     }
 }
