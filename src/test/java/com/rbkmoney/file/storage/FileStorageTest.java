@@ -1,24 +1,28 @@
 package com.rbkmoney.file.storage;
 
 import com.rbkmoney.file.storage.msgpack.Value;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.FileEntity;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.thrift.TException;
+import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
+import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLDecoder;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,6 +32,30 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
     private static final String FILE_DATA = "test";
     private static final String FILE_NAME = "rainbow-champion";
+
+    @Test
+    public void fileUploadWithHttpClientBuilderTest() throws IOException, URISyntaxException, TException {
+        String expirationTime = generateCurrentTimePlusDay().toString();
+        HttpClient httpClient = HttpClientBuilder.create().build();
+
+        NewFileResult fileResult = client.createNewFile(Collections.emptyMap(), expirationTime);
+
+        Path path = getFileFromResources();
+
+        HttpPut requestPut = new HttpPut(fileResult.getUploadUrl());
+        requestPut.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(FILE_NAME, StandardCharsets.UTF_8.name()));
+        requestPut.setEntity(new FileEntity(path.toFile()));
+
+        HttpResponse response = httpClient.execute(requestPut);
+        Assert.assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
+
+        // генерация url с доступом только для загрузки
+        String downloadUrl = client.generateDownloadUrl(fileResult.getFileDataId(), expirationTime);
+
+        HttpResponse responseGet = httpClient.execute(new HttpGet(downloadUrl));
+        InputStream content = responseGet.getEntity().getContent();
+        Assert.assertEquals(getContent(Files.newInputStream(path)), getContent(content));
+    }
 
     @Test
     public void uploadAndDownloadFileFromStorageTest() throws IOException, TException {
@@ -201,5 +229,16 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         // чтобы завершить загрузку вызываем getResponseCode
         assertEquals(HttpStatus.OK.value(), uploadUrlConnection.getResponseCode());
+    }
+
+    private Path getFileFromResources() throws URISyntaxException {
+        ClassLoader classLoader = this.getClass().getClassLoader();
+
+        URL url = Objects.requireNonNull(classLoader.getResource("respect"));
+        return Paths.get(url.toURI());
+    }
+
+    private String getContent(InputStream content) throws IOException {
+        return IOUtils.toString(content, StandardCharsets.UTF_8);
     }
 }
