@@ -15,8 +15,8 @@ public class StorageProperties {
 
     private String endpoint;
     private String signingRegion;
-    private String accessKey;
-    private String secretKey;
+    private String accessKey = "";
+    private String secretKey = "";
     private Protocol clientProtocol;
     private Integer clientMaxErrorRetry;
     private String bucketName;
