@@ -1,0 +1,25 @@
+info:
+  version: @project.version@
+  stage: dev
+server:
+  port: @server.port@
+management:
+  metrics:
+    export:
+      statsd:
+        flavor: etsy
+        enabled: false
+  security:
+    flag: false
+spring:
+  application:
+    name: @project.name@
+  output:
+    ansi:
+      enabled: always
+storage:
+  endpoint: localhost:32827
+  signingRegion: RU
+  clientProtocol: HTTP
+  clientMaxErrorRetry: 10
+  bucketName: files
