@@ -18,6 +18,12 @@ public class FileStorageTestPropertyValuesBuilder {
             withoutUsingTestContainers(strings);
         }
 
+        strings.add("storage.signingRegion=" + SIGNING_REGION);
+        strings.add("storage.accessKey=" + AWS_ACCESS_KEY);
+        strings.add("storage.secretKey=" + AWS_SECRET_KEY);
+        strings.add("storage.clientProtocol=" + PROTOCOL);
+        strings.add("storage.clientMaxErrorRetry=" + MAX_ERROR_RETRY);
+        strings.add("storage.bucketName=" + BUCKET_NAME);
         return TestPropertyValues.of(strings);
     }
 
@@ -29,11 +35,5 @@ public class FileStorageTestPropertyValuesBuilder {
 
     private static void withoutUsingTestContainers(List<String> strings) {
         strings.add("storage.endpoint=localhost:32827");
-        strings.add("storage.signingRegion=" + SIGNING_REGION);
-        strings.add("storage.accessKey=" + AWS_ACCESS_KEY);
-        strings.add("storage.secretKey=" + AWS_SECRET_KEY);
-        strings.add("storage.clientProtocol=" + PROTOCOL);
-        strings.add("storage.clientMaxErrorRetry=" + MAX_ERROR_RETRY);
-        strings.add("storage.bucketName=" + BUCKET_NAME);
     }
 }
