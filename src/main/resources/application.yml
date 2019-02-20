@@ -19,7 +19,9 @@ spring:
       enabled: always
 storage:
   endpoint: localhost:32827
+  bucketName: files
   signingRegion: RU
   clientProtocol: HTTP
   clientMaxErrorRetry: 10
-  bucketName: files
+  socketTimeout: 50000
+  connectionTimeout: 10000
