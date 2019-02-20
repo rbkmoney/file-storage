@@ -20,5 +20,7 @@ public class StorageProperties {
     private Protocol clientProtocol;
     private Integer clientMaxErrorRetry;
     private String bucketName;
+    private int socketTimeout;
+    private int connectionTimeout;
 
 }

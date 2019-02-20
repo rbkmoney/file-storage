@@ -69,6 +69,7 @@ public class AmazonS3StorageService implements StorageService {
         try {
             // в хранилище записывается неизменяемый фейковый файл с метаданными,
             // в котором находится ссылка на реальный файл
+            log.info("Upload fake file with metadata in ObjectMetadata, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
             uploadRequest(fileDataId, fileDto, emptyContent);
 
             // генерируем ссылку на выгрузку файла в хранилище напрямую в цеф по ключу fileId
@@ -91,6 +92,7 @@ public class AmazonS3StorageService implements StorageService {
 
     @Override
     public URL generateDownloadUrl(String fileDataId, Instant expirationTime) throws StorageException {
+        log.info("Download fake file with metadata in ObjectMetadata, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
         String fileId = getFileDto(fileDataId).getFileId();
         // генерируем ссылку на загрузку файла из хранилища напрямую в цеф по ключу fileId
         return generatePresignedUrl(fileId, expirationTime, HttpMethod.GET);
@@ -130,7 +132,7 @@ public class AmazonS3StorageService implements StorageService {
     private S3Object getS3Object(String id) throws StorageException {
         try {
             log.info(
-                    "Trying to get file from storage, id='{}', bucketId='{}'",
+                    "Trying to get fake file with metadata in ObjectMetadata from storage, id='{}', bucketId='{}'",
                     id,
                     bucketName
             );
@@ -138,7 +140,7 @@ public class AmazonS3StorageService implements StorageService {
             S3Object object = s3Client.getObject(getObjectRequest);
             checkNotNull(object, id, "File");
             log.info(
-                    "File have been successfully got from storage, id='{}', bucketId='{}'",
+                    "Fake file with metadata in ObjectMetadata have been successfully got from storage, id='{}', bucketId='{}'",
                     id,
                     bucketName
             );
@@ -146,7 +148,7 @@ public class AmazonS3StorageService implements StorageService {
         } catch (AmazonClientException ex) {
             throw new StorageException(
                     String.format(
-                            "Failed to get file from storage, fileDataId='%s', bucketId='%s'",
+                            "Failed to get fake file with metadata in ObjectMetadata from storage, fileDataId='%s', bucketId='%s'",
                             id,
                             bucketName
                     ),
@@ -156,7 +158,7 @@ public class AmazonS3StorageService implements StorageService {
     }
 
     private void checkRealFileStatus(S3Object s3Object) throws StorageFileNotFoundException {
-        log.info("Check real file expiration and uploaded status: ETag='{}'", s3Object.getObjectMetadata().getETag());
+        log.info("Check real file expiration and uploaded status by fake file with metadata in ObjectMetadata: ETag='{}'", s3Object.getObjectMetadata().getETag());
         ObjectMetadata objectMetadata = s3Object.getObjectMetadata();
 
         String fileId = getFileIdFromObjectMetadata(objectMetadata);
@@ -170,7 +172,7 @@ public class AmazonS3StorageService implements StorageService {
     }
 
     private FileDto getFileDtoByFakeFile(ObjectMetadata objectMetadata) {
-        log.info("Trying to extract real file metadata by fake file from storage: ETag='{}'", objectMetadata.getETag());
+        log.info("Trying to extract real file metadata by fake file with metadata in ObjectMetadata: ETag='{}'", objectMetadata.getETag());
         String id = getUserMetadataParameter(objectMetadata, FILE_DATA_ID);
         String fileId = getFileIdFromObjectMetadata(objectMetadata);
         String createdAt = getUserMetadataParameter(objectMetadata, CREATED_AT);
@@ -183,7 +185,7 @@ public class AmazonS3StorageService implements StorageService {
                         )
                 );
         log.info(
-                "Real file metadata have been successfully extracted by fake file from storage, id='{}', bucketId='{}'",
+                "Real file metadata have been successfully extracted by fake file with metadata in ObjectMetadata, id='{}', bucketId='{}'",
                 id,
                 bucketName
         );
@@ -206,7 +208,7 @@ public class AmazonS3StorageService implements StorageService {
             URL url = s3Client.generatePresignedUrl(request);
             checkNotNull(url, fileId, "Presigned url");
             log.info(
-                    "Presigned url have been successfully generated, url='{}', fileId='{}', bucketId='{}', expirationTime='{}', httpMethod='{}'",
+                    "Presigned url for real file have been successfully generated, url='{}', fileId='{}', bucketId='{}', expirationTime='{}', httpMethod='{}'",
                     url,
                     fileId,
                     bucketName,
@@ -217,7 +219,7 @@ public class AmazonS3StorageService implements StorageService {
         } catch (AmazonClientException ex) {
             throw new StorageException(
                     String.format(
-                            "Failed to generate presigned url, fileId='%s', bucketId='%s', expirationTime='%s', httpMethod='%s'",
+                            "Failed to generate presigned url for real file, fileId='%s', bucketId='%s', expirationTime='%s', httpMethod='%s'",
                             fileId,
                             bucketName,
                             expirationTime,
