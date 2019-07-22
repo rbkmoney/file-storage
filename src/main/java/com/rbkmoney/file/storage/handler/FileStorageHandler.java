@@ -20,8 +20,8 @@ import java.util.Map;
 
 import static com.rbkmoney.file.storage.util.CheckerUtil.checkString;
 
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class FileStorageHandler implements FileStorageSrv.Iface {
 
     private final StorageService storageService;
