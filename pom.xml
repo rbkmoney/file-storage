@@ -49,6 +49,11 @@
             <version>${woody.thrift.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.rbkmoney.logback</groupId>
+            <artifactId>nop-rolling</artifactId>
+            <version>1.0.1</version>
+        </dependency>
+        <dependency>
             <groupId>com.rbkmoney.geck</groupId>
             <artifactId>common</artifactId>
             <version>${geck.version}</version>
