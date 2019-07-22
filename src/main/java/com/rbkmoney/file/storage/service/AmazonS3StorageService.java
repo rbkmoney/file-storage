@@ -46,7 +46,7 @@ public class AmazonS3StorageService implements StorageService {
     @PostConstruct
     public void init() {
         this.bucketName = storageProperties.getBucketName();
-        if (!s3Client.doesBucketExist(bucketName)) {
+        if (!s3Client.doesBucketExistV2(bucketName)) {
             log.info("Create bucket in file storage, bucketId='{}'", bucketName);
             s3Client.createBucket(bucketName);
         }
