@@ -29,7 +29,7 @@
 
         <metrics.version>1.1.0</metrics.version>
         <dockerfile.base.service.tag>c0d0900ec19c907d866f8360031a836049985110</dockerfile.base.service.tag>
-        <dockerfile.registry>${env.REGISTRY}</dockerfile.registry>
+        <dockerfile.registry>dr2.rbkmoney.com</dockerfile.registry>
         <shared.resources.version>0.3.6</shared.resources.version>
         <woody.thrift.version>1.1.15</woody.thrift.version>
         <file.storage.proto.version>1.24-a77c0c4</file.storage.proto.version>
