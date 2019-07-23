@@ -14,5 +14,5 @@ build('file-storage', 'java-maven') {
     def registry = 'dr2.rbkmoney.com'
     def registryCredsId = 'jenkins_harbor'
 
-    javaServicePipeline(serviceName, useJava11, mvnArgs)
+    javaServicePipeline(serviceName, useJava11, mvnArgs, registry, registryCredsId)
 }

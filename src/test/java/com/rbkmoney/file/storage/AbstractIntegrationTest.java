@@ -1,27 +1,31 @@
 package com.rbkmoney.file.storage;
 
-import com.rbkmoney.TestContainers;
-import com.rbkmoney.TestContainersBuilder;
+import com.rbkmoney.easyway.AbstractTestUtils;
+import com.rbkmoney.easyway.TestContainers;
+import com.rbkmoney.easyway.TestContainersBuilder;
+import com.rbkmoney.easyway.TestContainersParameters;
 import com.rbkmoney.woody.thrift.impl.http.THSpawnClientBuilder;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.ClassRule;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.testcontainers.containers.FailureDetectingExternalResource;
 
 import java.io.IOException;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
@@ -29,21 +33,31 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 @ContextConfiguration(classes = FileStorageApplication.class, initializers = AbstractIntegrationTest.Initializer.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-public abstract class AbstractIntegrationTest {
+@Slf4j
+public abstract class AbstractIntegrationTest extends AbstractTestUtils {
 
-    private static TestContainers testContainers = TestContainersBuilder.builder(false)
+    private static TestContainers testContainers = TestContainersBuilder.builderWithTestContainers(TestContainersParameters::new)
             .addCephTestContainer()
             .build();
 
-    @BeforeClass
-    public static void beforeClass() {
-        testContainers.startTestContainers();
-    }
+    @ClassRule
+    public static final FailureDetectingExternalResource resource = new FailureDetectingExternalResource() {
 
-    @AfterClass
-    public static void afterClass() {
-        testContainers.stopTestContainers();
-    }
+        @Override
+        protected void starting(Description description) {
+            testContainers.startTestContainers();
+        }
+
+        @Override
+        protected void failed(Throwable e, Description description) {
+            log.warn("Test Container running was failed ", e);
+        }
+
+        @Override
+        protected void finished(Description description) {
+            testContainers.stopTestContainers();
+        }
+    };
 
     @TestConfiguration
     public static class TestContextConfiguration {
@@ -66,20 +80,18 @@ public abstract class AbstractIntegrationTest {
 
         @Override
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
-            FileStorageTestPropertyValuesBuilder.build(testContainers).applyTo(configurableApplicationContext);
+            TestPropertyValues.of(
+                    testContainers.getEnvironmentProperties(
+                            environmentProperties -> {
+                            }
+                    )
+            )
+                    .applyTo(configurableApplicationContext);
         }
-    }
-
-    protected Instant generateCurrentTimePlusDay() {
-        return LocalDateTime.now().plusDays(1).toInstant(getZoneOffset());
     }
 
     protected Instant generateCurrentTimePlusSecond() {
         return LocalDateTime.now().plusSeconds(1).toInstant(getZoneOffset());
-    }
-
-    private ZoneOffset getZoneOffset() {
-        return ZoneOffset.systemDefault().getRules().getOffset(LocalDateTime.now());
     }
 
     protected HttpURLConnection getHttpURLConnection(URL url, String method, boolean doOutput) throws IOException {

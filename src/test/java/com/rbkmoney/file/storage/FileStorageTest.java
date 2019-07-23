@@ -12,7 +12,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -240,9 +239,5 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         URL url = Objects.requireNonNull(classLoader.getResource("respect"));
         return Paths.get(url.toURI());
-    }
-
-    private String getContent(InputStream content) throws IOException {
-        return IOUtils.toString(content, StandardCharsets.UTF_8);
     }
 }
