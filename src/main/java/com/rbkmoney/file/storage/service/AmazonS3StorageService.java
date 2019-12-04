@@ -116,30 +116,18 @@ public class AmazonS3StorageService implements StorageService {
 
     private S3Object getS3Object(String id) {
         try {
-            log.info(
-                    "Trying to get fake metadata file, id='{}', bucketId='{}'",
-                    id,
-                    bucketName
-            );
+            log.info("Trying to get fake metadata file, id='{}', bucketId='{}'", id, bucketName);
 
             S3Object object = s3Client.getObject(new GetObjectRequest(bucketName, id));
 
             checkNotNull(object, id, "File");
 
-            log.info(
-                    "Fake metadata file successfully got, id='{}', bucketId='{}'",
-                    id,
-                    bucketName
-            );
+            log.info("Fake metadata file successfully got, id='{}', bucketId='{}'", id, bucketName);
 
             return object;
         } catch (AmazonClientException ex) {
             throw new StorageException(
-                    String.format(
-                            "Failed to get fake metadata file, fileDataId='%s', bucketId='%s'",
-                            id,
-                            bucketName
-                    ),
+                    String.format("Failed to get fake metadata file, fileDataId='%s', bucketId='%s'", id, bucketName),
                     ex
             );
         }
@@ -174,11 +162,7 @@ public class AmazonS3StorageService implements StorageService {
                         )
                 );
 
-        log.info(
-                "Real file metadata have been successfully extracted, id='{}', bucketId='{}'",
-                id,
-                bucketName
-        );
+        log.info("Real file metadata have been successfully extracted, id='{}', bucketId='{}'", id, bucketName);
 
         return new FileDto(id, fileId, createdAt, metadata);
     }
