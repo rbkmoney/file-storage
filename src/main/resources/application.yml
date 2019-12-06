@@ -4,6 +4,9 @@ info:
 server:
   port: @server.port@
 management:
+  endpoint:
+    health:
+      show-details: always
   metrics:
     export:
       statsd:
@@ -23,5 +26,3 @@ storage:
   signingRegion: RU
   clientProtocol: HTTP
   clientMaxErrorRetry: 10
-  socketTimeout: 50000
-  connectionTimeout: 10000

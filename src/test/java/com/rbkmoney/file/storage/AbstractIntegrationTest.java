@@ -6,23 +6,25 @@ import com.rbkmoney.easyway.TestContainersBuilder;
 import com.rbkmoney.easyway.TestContainersParameters;
 import com.rbkmoney.woody.thrift.impl.http.THSpawnClientBuilder;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.testcontainers.containers.FailureDetectingExternalResource;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -36,9 +38,24 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @Slf4j
 public abstract class AbstractIntegrationTest extends AbstractTestUtils {
 
+    private static final int TIMEOUT = 555000;
+
     private static TestContainers testContainers = TestContainersBuilder.builderWithTestContainers(TestContainersParameters::new)
             .addCephTestContainer()
             .build();
+
+    @Value("${local.server.port}")
+    private int port;
+
+    protected FileStorageSrv.Iface fileStorageClient;
+
+    @Before
+    public void setUp() throws Exception {
+        fileStorageClient = new THSpawnClientBuilder()
+                .withAddress(new URI("http://localhost:" + port + "/file_storage"))
+                .withNetworkTimeout(TIMEOUT)
+                .build(FileStorageSrv.Iface.class);
+    }
 
     @ClassRule
     public static final FailureDetectingExternalResource resource = new FailureDetectingExternalResource() {
@@ -58,23 +75,6 @@ public abstract class AbstractIntegrationTest extends AbstractTestUtils {
             testContainers.stopTestContainers();
         }
     };
-
-    @TestConfiguration
-    public static class TestContextConfiguration {
-
-        private static final int TIMEOUT = 555000;
-
-        @Value("${local.server.port}")
-        protected int port;
-
-        @Bean
-        public FileStorageSrv.Iface fileStorageCli() throws URISyntaxException {
-            return new THSpawnClientBuilder()
-                    .withAddress(new URI("http://localhost:" + port + "/file_storage"))
-                    .withNetworkTimeout(TIMEOUT)
-                    .build(FileStorageSrv.Iface.class);
-        }
-    }
 
     public static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 

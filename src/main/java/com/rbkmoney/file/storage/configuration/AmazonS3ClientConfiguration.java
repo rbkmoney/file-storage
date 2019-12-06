@@ -12,11 +12,13 @@ import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.rbkmoney.file.storage.configuration.properties.StorageProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @RequiredArgsConstructor
+@EnableConfigurationProperties(StorageProperties.class)
 public class AmazonS3ClientConfiguration {
 
     private final StorageProperties storageProperties;
@@ -54,9 +56,7 @@ public class AmazonS3ClientConfiguration {
         return new ClientConfiguration()
                 .withProtocol(storageProperties.getClientProtocol())
                 .withSignerOverride("S3SignerType")
-                .withMaxErrorRetry(storageProperties.getClientMaxErrorRetry())
-                .withConnectionTimeout(storageProperties.getConnectionTimeout())
-                .withSocketTimeout(storageProperties.getSocketTimeout());
+                .withMaxErrorRetry(storageProperties.getClientMaxErrorRetry());
     }
 
     @Bean

@@ -68,6 +68,11 @@
             <artifactId>spring-boot-starter-metrics-statsd</artifactId>
             <version>${metrics.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.rbkmoney</groupId>
+            <artifactId>custom-actuator-endpoints</artifactId>
+            <version>0.0.1</version>
+        </dependency>
 
         <!-- Spring libs -->
         <dependency>

@@ -6,10 +6,11 @@ import com.rbkmoney.file.storage.FileStorageSrv;
 import com.rbkmoney.file.storage.NewFileResult;
 import com.rbkmoney.file.storage.msgpack.Value;
 import com.rbkmoney.file.storage.service.StorageService;
+import com.rbkmoney.file.storage.service.exception.FileNotFoundException;
 import com.rbkmoney.file.storage.service.exception.StorageException;
-import com.rbkmoney.file.storage.service.exception.StorageFileNotFoundException;
 import com.rbkmoney.geck.common.util.TypeUtil;
 import com.rbkmoney.woody.api.flow.error.WUnavailableResultException;
+import com.rbkmoney.woody.api.flow.error.WUndefinedResultException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
@@ -31,15 +32,10 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
         try {
             Instant instant = TypeUtil.stringToInstant(expiresAt);
             return storageService.createNewFile(metadata, instant);
-        } catch (StorageFileNotFoundException e) {
-            log.warn("File not found in storage", e);
-            throw new FileNotFound();
         } catch (StorageException e) {
-            log.warn("Error with storage", e);
-            throw new WUnavailableResultException(e);
+            throw wUnavailableResultException(e);
         } catch (Exception e) {
-            log.error("Error when createNewFile", e);
-            throw new TException(e);
+            throw wUndefinedResultException("Error when \"createNewFile\"", e);
         }
     }
 
@@ -51,15 +47,12 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             Instant instant = TypeUtil.stringToInstant(expiresAt);
             URL url = storageService.generateDownloadUrl(fileDataId, instant);
             return url.toString();
-        } catch (StorageFileNotFoundException e) {
-            log.warn("File not found in storage", e);
-            throw new FileNotFound();
+        } catch (FileNotFoundException e) {
+            throw fileNotFound(e);
         } catch (StorageException e) {
-            log.warn("Error with storage", e);
-            throw new WUnavailableResultException(e);
+            throw wUnavailableResultException(e);
         } catch (Exception e) {
-            log.error("Error when generateDownloadUrl", e);
-            throw new TException(e);
+            throw wUndefinedResultException("Error when \"generateDownloadUrl\"", e);
         }
     }
 
@@ -68,15 +61,27 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
         try {
             checkString(fileDataId, "Bad request parameter, fileDataId required and not empty arg");
             return storageService.getFileData(fileDataId);
-        } catch (StorageFileNotFoundException e) {
-            log.warn("File not found in storage", e);
-            throw new FileNotFound();
+        } catch (FileNotFoundException e) {
+            throw fileNotFound(e);
         } catch (StorageException e) {
-            log.warn("Error with storage", e);
-            throw new WUnavailableResultException(e);
+            throw wUnavailableResultException(e);
         } catch (Exception e) {
-            log.error("Error when getFileData", e);
-            throw new TException(e);
+            throw wUndefinedResultException("Error when \"getFileData\"", e);
         }
+    }
+
+    private FileNotFound fileNotFound(FileNotFoundException e) {
+        log.warn("File not found", e);
+        return new FileNotFound();
+    }
+
+    private WUnavailableResultException wUnavailableResultException(StorageException e) {
+        log.error("Error with storage", e);
+        return new WUnavailableResultException("Error with storage", e);
+    }
+
+    private WUndefinedResultException wUndefinedResultException(String msg, Exception e) {
+        log.error(msg, e);
+        return new WUndefinedResultException(msg, e);
     }
 }
