@@ -23,5 +23,3 @@ storage:
   signingRegion: RU
   clientProtocol: HTTP
   clientMaxErrorRetry: 10
-  socketTimeout: 50000
-  connectionTimeout: 10000
