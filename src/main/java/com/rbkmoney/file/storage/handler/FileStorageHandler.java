@@ -33,9 +33,9 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             Instant instant = TypeUtil.stringToInstant(expiresAt);
             return storageService.createNewFile(metadata, instant);
         } catch (StorageException e) {
-            throw new WUnavailableResultException("Error with storage", e);
+            throw wUnavailableResultException(e);
         } catch (Exception e) {
-            throw new WUndefinedResultException("Error when \"createNewFile\"", e);
+            throw wUndefinedResultException("Error when \"createNewFile\"", e);
         }
     }
 
@@ -48,11 +48,11 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             URL url = storageService.generateDownloadUrl(fileDataId, instant);
             return url.toString();
         } catch (FileNotFoundException e) {
-            throw new FileNotFound();
+            throw fileNotFound(e);
         } catch (StorageException e) {
-            throw new WUnavailableResultException("Error with storage", e);
+            throw wUnavailableResultException(e);
         } catch (Exception e) {
-            throw new WUndefinedResultException("Error when \"generateDownloadUrl\"", e);
+            throw wUndefinedResultException("Error when \"generateDownloadUrl\"", e);
         }
     }
 
@@ -62,11 +62,26 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             checkString(fileDataId, "Bad request parameter, fileDataId required and not empty arg");
             return storageService.getFileData(fileDataId);
         } catch (FileNotFoundException e) {
-            throw new FileNotFound();
+            throw fileNotFound(e);
         } catch (StorageException e) {
-            throw new WUnavailableResultException("Error with storage", e);
+            throw wUnavailableResultException(e);
         } catch (Exception e) {
-            throw new WUndefinedResultException("Error when \"getFileData\"", e);
+            throw wUndefinedResultException("Error when \"getFileData\"", e);
         }
+    }
+
+    private FileNotFound fileNotFound(FileNotFoundException e) {
+        log.warn("File not found", e);
+        return new FileNotFound();
+    }
+
+    private WUnavailableResultException wUnavailableResultException(StorageException e) {
+        log.error("Error with storage", e);
+        return new WUnavailableResultException("Error with storage", e);
+    }
+
+    private WUndefinedResultException wUndefinedResultException(String msg, Exception e) {
+        log.error(msg, e);
+        return new WUndefinedResultException(msg, e);
     }
 }
