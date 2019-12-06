@@ -4,6 +4,9 @@ info:
 server:
   port: @server.port@
 management:
+  endpoint:
+    health:
+      show-details: always
   metrics:
     export:
       statsd:
