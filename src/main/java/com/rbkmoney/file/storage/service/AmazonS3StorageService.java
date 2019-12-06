@@ -10,6 +10,7 @@ import com.rbkmoney.file.storage.FileData;
 import com.rbkmoney.file.storage.NewFileResult;
 import com.rbkmoney.file.storage.configuration.properties.StorageProperties;
 import com.rbkmoney.file.storage.msgpack.Value;
+import com.rbkmoney.file.storage.service.exception.ExtractMetadataException;
 import com.rbkmoney.file.storage.service.exception.FileNotFoundException;
 import com.rbkmoney.file.storage.service.exception.StorageException;
 import com.rbkmoney.file.storage.service.exception.WaitingUploadException;
@@ -234,7 +235,7 @@ public class AmazonS3StorageService implements StorageService {
     private String getUserMetadataParameter(String fileDataId, ObjectMetadata objectMetadata, String key) {
         return Optional.ofNullable(objectMetadata.getUserMetaDataOf(key))
                 .orElseThrow(
-                        () -> new StorageException(
+                        () -> new ExtractMetadataException(
                                 format(
                                         "Failed to extract metadata parameter, fileDataId=%s, bucketId=%s, key=%s",
                                         fileDataId, bucketName, key
