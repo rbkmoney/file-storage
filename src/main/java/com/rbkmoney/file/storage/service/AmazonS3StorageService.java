@@ -65,7 +65,7 @@ public class AmazonS3StorageService implements StorageService {
         FileDto fileDto = fileDto(fileDataId, fileId, metadata);
 
         // записывается неизменяемый фейковый файл с метаданными, в котором находится ссылка на реальный файл
-        uploadFakeMetadataFile(fileDataId, fileDto);
+        uploadEmptyFileWithMetadata(fileDataId, fileDto);
 
         // генерируется ссылка на выгрузку файла в хранилище напрямую в цеф по ключу fileId
         log.info("Generate Upload Url, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
@@ -127,7 +127,7 @@ public class AmazonS3StorageService implements StorageService {
         }
     }
 
-    private void uploadFakeMetadataFile(String fileDataId, FileDto fileDto) {
+    private void uploadEmptyFileWithMetadata(String fileDataId, FileDto fileDto) {
         try {
             PutObjectRequest putObjectRequest = putObjectRequest(fileDataId, fileDto, byteArrayInputStream());
 
@@ -172,7 +172,7 @@ public class AmazonS3StorageService implements StorageService {
 
         checkRealFileStatus(fileDataId, s3Object);
 
-        return getFileDtoByFakeFile(fileDataId, s3Object.getObjectMetadata());
+        return getFileDto(fileDataId, s3Object.getObjectMetadata());
     }
 
     private String getFileName(String fileDataId, FileDto fileDto) {
@@ -216,7 +216,7 @@ public class AmazonS3StorageService implements StorageService {
         throw new FileNotFoundException(format("S3Object is null, fileDataId=%s, bucketId=%s", fileDataId, bucketName));
     }
 
-    private FileDto getFileDtoByFakeFile(String fileDataId, ObjectMetadata objectMetadata) {
+    private FileDto getFileDto(String fileDataId, ObjectMetadata objectMetadata) {
         String id = getUserMetadataParameter(fileDataId, objectMetadata, FILE_DATA_ID);
         String fileId = getFileIdFromObjectMetadata(fileDataId, objectMetadata);
         String createdAt = getUserMetadataParameter(fileDataId, objectMetadata, CREATED_AT);
