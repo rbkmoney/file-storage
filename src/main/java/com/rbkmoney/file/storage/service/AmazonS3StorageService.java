@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.Instant;
@@ -64,11 +65,10 @@ public class AmazonS3StorageService implements StorageService {
         FileDto fileDto = fileDto(fileDataId, fileId, metadata);
 
         // записывается неизменяемый фейковый файл с метаданными, в котором находится ссылка на реальный файл
-        log.info("Upload fake metadata file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
-        uploadFakeMetadataFile(fileDataId, fileDto);
+        uploadEmptyFileWithMetadata(fileDataId, fileDto);
 
         // генерируется ссылка на выгрузку файла в хранилище напрямую в цеф по ключу fileId
-        log.info("Generate Upload Url for real file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
+        log.info("Generate Upload Url, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
         URL uploadUrl = generatePresignedUrl(fileDataId, fileId, expirationTime, HttpMethod.PUT);
 
         log.info("NewFileResult has been successfully created, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
@@ -81,11 +81,11 @@ public class AmazonS3StorageService implements StorageService {
         log.info("Trying to generate Download Url, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
 
         // достается неизменяемый фейковый файл с метаданными
-        log.info("Extract id of real file from fake metadata file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
+        log.info("Extract file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
         FileDto fileDto = getFileDto(fileDataId);
 
         // генерируем ссылку на загрузку файла из хранилища напрямую в цеф по ключу fileId
-        log.info("Generate Download Url for real file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
+        log.info("Generate Download Url, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
         URL generatePresignedUrl = generatePresignedUrl(fileDto.getFileDataId(), fileDto.getFileId(), expirationTime, HttpMethod.GET);
 
         log.info("Download Url has been successfully generate, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
@@ -98,15 +98,11 @@ public class AmazonS3StorageService implements StorageService {
         log.info("Trying to get FileData, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
 
         // достается неизменяемый фейковый файл с метаданными
-        log.info("Extract id of real file from fake metadata file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
+        log.info("Extract file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
         FileDto fileDto = getFileDto(fileDataId);
 
         // достается реальный файл формата s3
-        log.info("Extract real file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
-        S3Object object = getS3Object(fileDataId, fileDto.getFileId());
-
-        log.info("Extract file name, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
-        String fileName = extractFileName(object);
+        String fileName = getFileName(fileDataId, fileDto);
 
         log.info("FileData has been successfully got, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
 
@@ -131,7 +127,7 @@ public class AmazonS3StorageService implements StorageService {
         }
     }
 
-    private void uploadFakeMetadataFile(String fileDataId, FileDto fileDto) {
+    private void uploadEmptyFileWithMetadata(String fileDataId, FileDto fileDto) {
         try {
             PutObjectRequest putObjectRequest = putObjectRequest(fileDataId, fileDto, byteArrayInputStream());
 
@@ -142,13 +138,13 @@ public class AmazonS3StorageService implements StorageService {
             Thread.currentThread().interrupt();
             throw new WaitingUploadException(
                     format(
-                            "Thread is interrupted while waiting for the fake metadata file upload to complete, fileDataId=%s, bucketId=%s",
+                            "Thread is interrupted while waiting for the file upload to complete, fileDataId=%s, bucketId=%s",
                             fileDataId, bucketName
                     )
             );
         } catch (SdkBaseException ex) {
             throw new StorageException(
-                    format("Failed to upload fake metadata file, fileDataId=%s, bucketId=%s", fileDataId, bucketName),
+                    format("Failed to upload file, fileDataId=%s, bucketId=%s", fileDataId, bucketName),
                     ex
             );
         }
@@ -176,12 +172,17 @@ public class AmazonS3StorageService implements StorageService {
 
         checkRealFileStatus(fileDataId, s3Object);
 
-        return getFileDtoByFakeFile(fileDataId, s3Object.getObjectMetadata());
+        return getFileDto(fileDataId, s3Object.getObjectMetadata());
+    }
+
+    private String getFileName(String fileDataId, FileDto fileDto) {
+        S3Object s3Object = getS3Object(fileDataId, fileDto.getFileId());
+
+        return extractFileName(s3Object);
     }
 
     private S3Object getS3Object(String fileDataId, String id) {
-        try {
-            S3Object object = s3Client.getObject(new GetObjectRequest(bucketName, id));
+        try (S3Object object = s3Client.getObject(new GetObjectRequest(bucketName, id))) {
 
             checkNotNull("S3Object", fileDataId, object);
 
@@ -191,6 +192,8 @@ public class AmazonS3StorageService implements StorageService {
                     format("Failed to get S3Object, fileDataId=%s, bucketId=%s", fileDataId, bucketName),
                     ex
             );
+        } catch (IOException ex) {
+            throw new StorageException(format("Unable to close S3Object, fileDataId=%s, bucketId=%s", fileDataId, bucketName), ex);
         }
     }
 
@@ -213,7 +216,7 @@ public class AmazonS3StorageService implements StorageService {
         throw new FileNotFoundException(format("S3Object is null, fileDataId=%s, bucketId=%s", fileDataId, bucketName));
     }
 
-    private FileDto getFileDtoByFakeFile(String fileDataId, ObjectMetadata objectMetadata) {
+    private FileDto getFileDto(String fileDataId, ObjectMetadata objectMetadata) {
         String id = getUserMetadataParameter(fileDataId, objectMetadata, FILE_DATA_ID);
         String fileId = getFileIdFromObjectMetadata(fileDataId, objectMetadata);
         String createdAt = getUserMetadataParameter(fileDataId, objectMetadata, CREATED_AT);
@@ -244,8 +247,8 @@ public class AmazonS3StorageService implements StorageService {
                 );
     }
 
-    private String extractFileName(S3Object object) {
-        String contentDisposition = object.getObjectMetadata().getContentDisposition();
+    private String extractFileName(S3Object s3Object) {
+        String contentDisposition = s3Object.getObjectMetadata().getContentDisposition();
         int fileNameIndex = contentDisposition.lastIndexOf(FILENAME_PARAM) + FILENAME_PARAM.length();
         return contentDisposition.substring(fileNameIndex);
     }

@@ -19,11 +19,15 @@
         <level value="error"/>
     </logger>
 
+    <logger name="org.apache.http">
+        <level value="error"/>
+    </logger>
+
     <logger name="com.amazonaws">
         <level value="error"/>
     </logger>
 
-    <logger name="org.apache.http">
+    <logger name="com.rbkmoney.woody">
         <level value="error"/>
     </logger>
 

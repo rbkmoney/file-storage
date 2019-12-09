@@ -7,7 +7,6 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.thrift.TException;
-import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
 
@@ -21,9 +20,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.rbkmoney.file.storage.msgpack.Value.*;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 // все тесты в 1 классе , чтобы сэкономить время на поднятии тест контейнера
@@ -46,14 +48,14 @@ public class FileStorageTest extends AbstractIntegrationTest {
         requestPut.setEntity(new FileEntity(path.toFile()));
 
         HttpResponse response = httpClient.execute(requestPut);
-        Assert.assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
+        assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
 
         // генерация url с доступом только для загрузки
         String downloadUrl = fileStorageClient.generateDownloadUrl(fileResult.getFileDataId(), expirationTime);
 
         HttpResponse responseGet = httpClient.execute(new HttpGet(downloadUrl));
         InputStream content = responseGet.getEntity().getContent();
-        Assert.assertEquals(getContent(Files.newInputStream(path)), getContent(content));
+        assertEquals(getContent(Files.newInputStream(path)), getContent(content));
     }
 
     @Test
@@ -214,6 +216,48 @@ public class FileStorageTest extends AbstractIntegrationTest {
         // тут используется энкодер\декодер, потому что apache http клиент менять кодировку.
         // при аплоаде напрямую по uploadUrl в ceph такой проблемы нет
         assertEquals(fileName, URLDecoder.decode(fileData.getFileName(), StandardCharsets.UTF_8.name()));
+    }
+
+    @Test
+    public void s3ConnectionPoolTest() throws Exception {
+        String expirationTime = generateCurrentTimePlusDay().toString();
+        HttpClient httpClient = HttpClientBuilder.create().build();
+
+        NewFileResult fileResult = fileStorageClient.createNewFile(Collections.emptyMap(), expirationTime);
+
+        Path path = getFileFromResources();
+
+        HttpPut requestPut = new HttpPut(fileResult.getUploadUrl());
+        requestPut.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(FILE_NAME, StandardCharsets.UTF_8.name()));
+        requestPut.setEntity(new FileEntity(path.toFile()));
+
+        HttpResponse response = httpClient.execute(requestPut);
+        assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
+
+        // генерация url с доступом только для загрузки
+        String downloadUrl = fileStorageClient.generateDownloadUrl(fileResult.getFileDataId(), expirationTime);
+
+        HttpResponse responseGet = httpClient.execute(new HttpGet(downloadUrl));
+        InputStream content = responseGet.getEntity().getContent();
+        assertEquals(getContent(Files.newInputStream(path)), getContent(content));
+
+        CountDownLatch countDownLatch = new CountDownLatch(1000);
+        ExecutorService executor = Executors.newFixedThreadPool(5);
+        for (int i = 0; i < 1000; i++) {
+            executor.execute(
+                    () -> {
+                        try {
+                            fileStorageClient.getFileData(fileResult.getFileDataId());
+                            countDownLatch.countDown();
+                        } catch (TException fileNotFound) {
+                            fail();
+                        }
+                    }
+            );
+        }
+
+        countDownLatch.await();
+        assertTrue(true);
     }
 
     private void uploadTestData(NewFileResult fileResult, String fileName, String testData) throws IOException {
