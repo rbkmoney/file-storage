@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.Instant;
@@ -102,11 +103,8 @@ public class AmazonS3StorageService implements StorageService {
         FileDto fileDto = getFileDto(fileDataId);
 
         // достается реальный файл формата s3
-        log.info("Extract real file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
-        S3Object object = getS3Object(fileDataId, fileDto.getFileId());
-
-        log.info("Extract file name, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
-        String fileName = extractFileName(object);
+        log.info("Extract file name from real file, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
+        String fileName = getFileName(fileDataId, fileDto);
 
         log.info("FileData has been successfully got, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
 
@@ -172,11 +170,16 @@ public class AmazonS3StorageService implements StorageService {
     }
 
     private FileDto getFileDto(String fileDataId) {
-        S3Object s3Object = getS3Object(fileDataId, fileDataId);
+        S3Object s3Object = null;
+        try {
+            s3Object = getS3Object(fileDataId, fileDataId);
 
-        checkRealFileStatus(fileDataId, s3Object);
+            checkRealFileStatus(fileDataId, s3Object);
 
-        return getFileDtoByFakeFile(fileDataId, s3Object.getObjectMetadata());
+            return getFileDtoByFakeFile(fileDataId, s3Object.getObjectMetadata());
+        } finally {
+            closeIO(s3Object);
+        }
     }
 
     private S3Object getS3Object(String fileDataId, String id) {
@@ -213,6 +216,27 @@ public class AmazonS3StorageService implements StorageService {
         throw new FileNotFoundException(format("S3Object is null, fileDataId=%s, bucketId=%s", fileDataId, bucketName));
     }
 
+    private String getFileName(String fileDataId, FileDto fileDto) {
+        S3Object s3Object = null;
+        try {
+            s3Object = getS3Object(fileDataId, fileDto.getFileId());
+
+            return extractFileName(s3Object);
+        } finally {
+            closeIO(s3Object);
+        }
+    }
+
+    private void closeIO(S3Object s3Object) {
+        if (s3Object != null) {
+            try {
+                s3Object.close();
+            } catch (IOException ex) {
+                throw new StorageException("Unable to close S3 object", ex);
+            }
+        }
+    }
+
     private FileDto getFileDtoByFakeFile(String fileDataId, ObjectMetadata objectMetadata) {
         String id = getUserMetadataParameter(fileDataId, objectMetadata, FILE_DATA_ID);
         String fileId = getFileIdFromObjectMetadata(fileDataId, objectMetadata);
@@ -244,8 +268,8 @@ public class AmazonS3StorageService implements StorageService {
                 );
     }
 
-    private String extractFileName(S3Object object) {
-        String contentDisposition = object.getObjectMetadata().getContentDisposition();
+    private String extractFileName(S3Object s3Object) {
+        String contentDisposition = s3Object.getObjectMetadata().getContentDisposition();
         int fileNameIndex = contentDisposition.lastIndexOf(FILENAME_PARAM) + FILENAME_PARAM.length();
         return contentDisposition.substring(fileNameIndex);
     }
