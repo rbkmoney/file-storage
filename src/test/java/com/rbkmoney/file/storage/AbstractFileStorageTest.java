@@ -1,5 +1,7 @@
 package com.rbkmoney.file.storage;
 
+import com.rbkmoney.file.storage.msgpack.Value;
+import com.rbkmoney.woody.thrift.impl.http.THSpawnClientBuilder;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -7,8 +9,13 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.thrift.TException;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,20 +26,39 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.rbkmoney.file.storage.msgpack.Value.*;
-import static org.junit.Assert.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static com.rbkmoney.file.storage.util.PrimitiveGeneratorUtil.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-// все тесты в 1 классе , чтобы сэкономить время на поднятии тест контейнера
-public class FileStorageTest extends AbstractIntegrationTest {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestPropertySource("classpath:application.yml")
+@DirtiesContext
+public abstract class AbstractFileStorageTest {
 
+    private static final int TIMEOUT = 555000;
     private static final String FILE_DATA = "test";
     private static final String FILE_NAME = "rainbow-champion";
+
+    protected FileStorageSrv.Iface fileStorageClient;
+
+    @org.springframework.beans.factory.annotation.Value("${local.server.port}")
+    private int port;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        fileStorageClient = new THSpawnClientBuilder()
+                .withAddress(new URI("http://localhost:" + port + "/file_storage"))
+                .withNetworkTimeout(TIMEOUT)
+                .build(FileStorageSrv.Iface.class);
+    }
 
     @Test
     public void fileUploadWithHttpClientBuilderTest() throws IOException, URISyntaxException, TException {
@@ -44,11 +70,13 @@ public class FileStorageTest extends AbstractIntegrationTest {
         Path path = getFileFromResources();
 
         HttpPut requestPut = new HttpPut(fileResult.getUploadUrl());
-        requestPut.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(FILE_NAME, StandardCharsets.UTF_8.name()));
+        requestPut.setHeader(
+                "Content-Disposition",
+                "attachment;filename=" + URLEncoder.encode(FILE_NAME, StandardCharsets.UTF_8.name()));
         requestPut.setEntity(new FileEntity(path.toFile()));
 
         HttpResponse response = httpClient.execute(requestPut);
-        assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
+        Assertions.assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
 
         // генерация url с доступом только для загрузки
         String downloadUrl = fileStorageClient.generateDownloadUrl(fileResult.getFileDataId(), expirationTime);
@@ -71,7 +99,8 @@ public class FileStorageTest extends AbstractIntegrationTest {
             uploadTestData(fileResult, FILE_NAME, FILE_DATA);
 
             // генерация url с доступом только для загрузки
-            URL downloadUrl = new URL(fileStorageClient.generateDownloadUrl(fileResult.getFileDataId(), expirationTime));
+            URL downloadUrl = new URL(
+                    fileStorageClient.generateDownloadUrl(fileResult.getFileDataId(), expirationTime));
 
             HttpURLConnection downloadUrlConnection = getHttpURLConnection(downloadUrl, "GET", false);
             InputStream inputStream = downloadUrlConnection.getInputStream();
@@ -113,10 +142,9 @@ public class FileStorageTest extends AbstractIntegrationTest {
         URL uploadUrl = new URL(fileResult.getUploadUrl());
 
         // ошибка при запросе по url методом get
-        assertEquals(HttpStatus.FORBIDDEN.value(), getHttpURLConnection(uploadUrl, "GET", false).getResponseCode());
-
-        // Length Required при запросе по url методом put
-        assertEquals(HttpStatus.LENGTH_REQUIRED.value(), getHttpURLConnection(uploadUrl, "PUT", FILE_NAME, true).getResponseCode());
+        assertEquals(
+                HttpStatus.FORBIDDEN.value(),
+                getHttpURLConnection(uploadUrl, "GET", false).getResponseCode());
 
         uploadTestData(fileResult, FILE_NAME, FILE_DATA);
     }
@@ -162,12 +190,16 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         // - - - - - сделаем задержку больше expiration
         // создание файла с доступом к файлу на секунду
-        NewFileResult throwingFileResult = fileStorageClient.createNewFile(Collections.emptyMap(), generateCurrentTimePlusSecond().toString());
+        NewFileResult throwingFileResult = fileStorageClient.createNewFile(
+                Collections.emptyMap(),
+                generateCurrentTimePlusSecond().toString());
 
         String throwingFileDataId = throwingFileResult.getFileDataId();
 
         // ошибка доступа - файла не существует, тк не было upload
-        assertThrows(FileNotFound.class, () -> fileStorageClient.generateDownloadUrl(throwingFileDataId, expirationTime));
+        assertThrows(
+                FileNotFound.class,
+                () -> fileStorageClient.generateDownloadUrl(throwingFileDataId, expirationTime));
         assertThrows(FileNotFound.class, () -> fileStorageClient.getFileData(throwingFileDataId));
 
         // задержка перед upload для теста expiration
@@ -178,20 +210,21 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         // ошибка доступа
         assertThrows(FileNotFound.class, () -> fileStorageClient.getFileData(throwingFileDataId));
-        assertThrows(FileNotFound.class, () -> fileStorageClient.generateDownloadUrl(throwingFileDataId, expirationTime));
+        assertThrows(
+                FileNotFound.class,
+                () -> fileStorageClient.generateDownloadUrl(throwingFileDataId, expirationTime));
     }
 
     @Test
     public void extractMetadataTest() throws TException, IOException {
         String expirationTime = generateCurrentTimePlusDay().toString();
-        Map<String, com.rbkmoney.file.storage.msgpack.Value> metadata = new HashMap<>() {{
-            put("key1", b(true));
-            put("key2", i(1));
-            put("key3", flt(1));
-            put("key4", arr(new ArrayList<>()));
-            put("key5", str(FILE_DATA));
-            put("key6", bin(new byte[]{}));
-        }};
+        Map<String, Value> metadata = Map.of(
+                "key1", b(true),
+                "key2", i(1),
+                "key3", flt(1),
+                "key4", arr(new ArrayList<>()),
+                "key5", str(FILE_DATA),
+                "key6", bin(new byte[]{}));
 
         NewFileResult fileResult = fileStorageClient.createNewFile(metadata, expirationTime);
         uploadTestData(fileResult, FILE_NAME, FILE_DATA);
@@ -228,7 +261,9 @@ public class FileStorageTest extends AbstractIntegrationTest {
         Path path = getFileFromResources();
 
         HttpPut requestPut = new HttpPut(fileResult.getUploadUrl());
-        requestPut.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(FILE_NAME, StandardCharsets.UTF_8.name()));
+        requestPut.setHeader(
+                "Content-Disposition",
+                "attachment;filename=" + URLEncoder.encode(FILE_NAME, StandardCharsets.UTF_8.name()));
         requestPut.setEntity(new FileEntity(path.toFile()));
 
         HttpResponse response = httpClient.execute(requestPut);
@@ -279,5 +314,22 @@ public class FileStorageTest extends AbstractIntegrationTest {
 
         URL url = Objects.requireNonNull(classLoader.getResource("respect"));
         return Paths.get(url.toURI());
+    }
+
+    public static HttpURLConnection getHttpURLConnection(URL url, String method, boolean doOutput) throws IOException {
+        return getHttpURLConnection(url, method, null, doOutput);
+    }
+
+    public static HttpURLConnection getHttpURLConnection(URL url, String method, String fileName, boolean doOutput)
+            throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setDoOutput(doOutput);
+        connection.setRequestMethod(method);
+        if (fileName != null) {
+            connection.setRequestProperty(
+                    "Content-Disposition",
+                    "attachment;filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()));
+        }
+        return connection;
     }
 }

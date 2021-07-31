@@ -86,7 +86,11 @@ public class AmazonS3StorageService implements StorageService {
 
         // генерируем ссылку на загрузку файла из хранилища напрямую в цеф по ключу fileId
         log.info("Generate Download Url, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
-        URL generatePresignedUrl = generatePresignedUrl(fileDto.getFileDataId(), fileDto.getFileId(), expirationTime, HttpMethod.GET);
+        URL generatePresignedUrl = generatePresignedUrl(
+                fileDto.getFileDataId(),
+                fileDto.getFileId(),
+                expirationTime,
+                HttpMethod.GET);
 
         log.info("Download Url has been successfully generate, fileDataId='{}', bucketId='{}'", fileDataId, bucketName);
 
@@ -138,7 +142,8 @@ public class AmazonS3StorageService implements StorageService {
             Thread.currentThread().interrupt();
             throw new WaitingUploadException(
                     format(
-                            "Thread is interrupted while waiting for the file upload to complete, fileDataId=%s, bucketId=%s",
+                            "Thread is interrupted while waiting for the file upload to complete, " +
+                                    "fileDataId=%s, bucketId=%s",
                             fileDataId, bucketName
                     )
             );
@@ -175,6 +180,21 @@ public class AmazonS3StorageService implements StorageService {
         return getFileDto(fileDataId, s3Object.getObjectMetadata());
     }
 
+    private FileDto getFileDto(String fileDataId, ObjectMetadata objectMetadata) {
+        String id = getUserMetadataParameter(fileDataId, objectMetadata, FILE_DATA_ID);
+        String fileId = getFileIdFromObjectMetadata(fileDataId, objectMetadata);
+        String createdAt = getUserMetadataParameter(fileDataId, objectMetadata, CREATED_AT);
+        Map<String, Value> metadata = objectMetadata.getUserMetadata().entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(METADATA) && entry.getValue() != null)
+                .collect(
+                        Collectors.toMap(
+                                o -> o.getKey().substring(METADATA.length()),
+                                o -> DamselUtil.fromJson(o.getValue(), Value.class)
+                        )
+                );
+        return new FileDto(id, fileId, createdAt, metadata);
+    }
+
     private String getFileName(String fileDataId, FileDto fileDto) {
         S3Object s3Object = getS3Object(fileDataId, fileDto.getFileId());
 
@@ -193,7 +213,9 @@ public class AmazonS3StorageService implements StorageService {
                     ex
             );
         } catch (IOException ex) {
-            throw new StorageException(format("Unable to close S3Object, fileDataId=%s, bucketId=%s", fileDataId, bucketName), ex);
+            throw new StorageException(
+                    format("Unable to close S3Object, fileDataId=%s, bucketId=%s", fileDataId, bucketName),
+                    ex);
         }
     }
 
@@ -214,21 +236,6 @@ public class AmazonS3StorageService implements StorageService {
 
         // если файл не соотвествует условиям, блокируем доступ к нему
         throw new FileNotFoundException(format("S3Object is null, fileDataId=%s, bucketId=%s", fileDataId, bucketName));
-    }
-
-    private FileDto getFileDto(String fileDataId, ObjectMetadata objectMetadata) {
-        String id = getUserMetadataParameter(fileDataId, objectMetadata, FILE_DATA_ID);
-        String fileId = getFileIdFromObjectMetadata(fileDataId, objectMetadata);
-        String createdAt = getUserMetadataParameter(fileDataId, objectMetadata, CREATED_AT);
-        Map<String, Value> metadata = objectMetadata.getUserMetadata().entrySet().stream()
-                .filter(entry -> entry.getKey().startsWith(METADATA) && entry.getValue() != null)
-                .collect(
-                        Collectors.toMap(
-                                o -> o.getKey().substring(METADATA.length()),
-                                o -> DamselUtil.fromJson(o.getValue(), Value.class)
-                        )
-                );
-        return new FileDto(id, fileId, createdAt, metadata);
     }
 
     private String getFileIdFromObjectMetadata(String fileDataId, ObjectMetadata objectMetadata) {
@@ -255,7 +262,8 @@ public class AmazonS3StorageService implements StorageService {
 
     private void checkNotNull(String objectType, String fileDataId, Object object) {
         if (Objects.isNull(object)) {
-            throw new FileNotFoundException(format("%s is null, fileDataId=%s, bucketId=%s", objectType, fileDataId, bucketName));
+            throw new FileNotFoundException(
+                    format("%s is null, fileDataId=%s, bucketId=%s", objectType, fileDataId, bucketName));
         }
     }
 
@@ -291,7 +299,10 @@ public class AmazonS3StorageService implements StorageService {
         return objectMetadata;
     }
 
-    private GeneratePresignedUrlRequest generatePresignedUrlRequest(String fileId, Instant expirationTime, HttpMethod httpMethod) {
+    private GeneratePresignedUrlRequest generatePresignedUrlRequest(
+            String fileId,
+            Instant expirationTime,
+            HttpMethod httpMethod) {
         return new GeneratePresignedUrlRequest(bucketName, fileId)
                 .withMethod(httpMethod)
                 .withExpiration(Date.from(expirationTime));

@@ -24,7 +24,9 @@ public class AmazonS3ClientConfiguration {
     private final StorageProperties storageProperties;
 
     @Bean
-    public AmazonS3 storageClient(AWSCredentialsProviderChain credentialsProviderChain, ClientConfiguration clientConfiguration) {
+    public AmazonS3 storageClient(
+            AWSCredentialsProviderChain credentialsProviderChain,
+            ClientConfiguration clientConfiguration) {
         return AmazonS3ClientBuilder.standard()
                 .withCredentials(credentialsProviderChain)
                 .withPathStyleAccessEnabled(true)

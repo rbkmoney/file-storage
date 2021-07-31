@@ -12,13 +12,13 @@ import java.io.IOException;
 
 public class DamselUtil {
 
-    public static String toJsonString(TBase tBase) {
-        return toJson(tBase).toString();
+    public static String toJsonString(TBase value) {
+        return toJson(value).toString();
     }
 
-    public static JsonNode toJson(TBase tBase) {
+    public static JsonNode toJson(TBase value) {
         try {
-            return new TBaseProcessor().process(tBase, new JsonHandler());
+            return new TBaseProcessor().process(value, new JsonHandler());
         } catch (IOException ex) {
             throw new IllegalArgumentException(ex);
         }

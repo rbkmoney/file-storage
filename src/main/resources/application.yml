@@ -42,3 +42,13 @@ storage:
   signingRegion: RU
   clientProtocol: HTTP
   clientMaxErrorRetry: 10
+
+testcontainers:
+  ceph:
+    tag: 'v3.0.5-stable-3.0-luminous-centos-7'
+    accessKey: 'test'
+    secretKey: 'test'
+  minio:
+    tag: 'latest'
+    user: 'user'
+    password: 'password'
