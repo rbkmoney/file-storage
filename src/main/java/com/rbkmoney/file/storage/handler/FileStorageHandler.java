@@ -33,9 +33,9 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
             Instant instant = TypeUtil.stringToInstant(expiresAt);
             return storageService.createNewFile(metadata, instant);
         } catch (StorageException e) {
-            throw wUnavailableResultException(e);
+            throw unavailableResultException(e);
         } catch (Exception e) {
-            throw wUndefinedResultException("Error when \"createNewFile\"", e);
+            throw undefinedResultException("Error when \"createNewFile\"", e);
         }
     }
 
@@ -50,9 +50,9 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
         } catch (FileNotFoundException e) {
             throw fileNotFound(e);
         } catch (StorageException e) {
-            throw wUnavailableResultException(e);
+            throw unavailableResultException(e);
         } catch (Exception e) {
-            throw wUndefinedResultException("Error when \"generateDownloadUrl\"", e);
+            throw undefinedResultException("Error when \"generateDownloadUrl\"", e);
         }
     }
 
@@ -64,9 +64,9 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
         } catch (FileNotFoundException e) {
             throw fileNotFound(e);
         } catch (StorageException e) {
-            throw wUnavailableResultException(e);
+            throw unavailableResultException(e);
         } catch (Exception e) {
-            throw wUndefinedResultException("Error when \"getFileData\"", e);
+            throw undefinedResultException("Error when \"getFileData\"", e);
         }
     }
 
@@ -75,12 +75,12 @@ public class FileStorageHandler implements FileStorageSrv.Iface {
         return new FileNotFound();
     }
 
-    private WUnavailableResultException wUnavailableResultException(StorageException e) {
+    private WUnavailableResultException unavailableResultException(StorageException e) {
         log.error("Error with storage", e);
         return new WUnavailableResultException("Error with storage", e);
     }
 
-    private WUndefinedResultException wUndefinedResultException(String msg, Exception e) {
+    private WUndefinedResultException undefinedResultException(String msg, Exception e) {
         log.error(msg, e);
         return new WUndefinedResultException(msg, e);
     }
