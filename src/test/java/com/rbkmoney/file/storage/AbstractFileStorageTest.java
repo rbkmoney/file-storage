@@ -1,6 +1,5 @@
 package com.rbkmoney.file.storage;
 
-import com.rbkmoney.file.storage.msgpack.Value;
 import com.rbkmoney.woody.thrift.impl.http.THSpawnClientBuilder;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -12,6 +11,7 @@ import org.apache.thrift.TException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.annotation.DirtiesContext;
@@ -49,7 +49,7 @@ public abstract class AbstractFileStorageTest {
 
     protected FileStorageSrv.Iface fileStorageClient;
 
-    @org.springframework.beans.factory.annotation.Value("${local.server.port}")
+    @Value("${local.server.port}")
     private int port;
 
     @BeforeEach
@@ -218,7 +218,7 @@ public abstract class AbstractFileStorageTest {
     @Test
     public void extractMetadataTest() throws TException, IOException {
         String expirationTime = generateCurrentTimePlusDay().toString();
-        Map<String, Value> metadata = Map.of(
+        var metadata = Map.of(
                 "key1", b(true),
                 "key2", i(1),
                 "key3", flt(1),
