@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.rbkmoney.file.storage.msgpack.Value.*;
-import static com.rbkmoney.file.storage.util.PrimitiveGeneratorUtil.*;
+import static com.rbkmoney.testcontainers.annotations.util.ValuesGenerator.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

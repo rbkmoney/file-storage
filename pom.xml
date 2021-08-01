@@ -107,15 +107,9 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>io.github.benas</groupId>
-            <artifactId>random-beans</artifactId>
-            <version>3.9.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>com.rbkmoney</groupId>
             <artifactId>testcontainers-annotations</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
