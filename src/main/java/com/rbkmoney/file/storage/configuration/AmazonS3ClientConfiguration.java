@@ -57,7 +57,7 @@ public class AmazonS3ClientConfiguration {
     public ClientConfiguration clientConfiguration() {
         return new ClientConfiguration()
                 .withProtocol(storageProperties.getClientProtocol())
-                .withSignerOverride("S3SignerType")
+                .withSignerOverride("AWSS3V4SignerType")
                 .withMaxErrorRetry(storageProperties.getClientMaxErrorRetry());
     }
 
