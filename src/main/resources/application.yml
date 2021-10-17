@@ -37,7 +37,7 @@ spring:
       enabled: always
 
 s3:
-  endpoint: 'localhost:32827'
+  endpoint: 'http://127.0.0.1:32827'
   bucket-name: 'files'
   signing-region: 'RU'
   client-protocol: 'http'
@@ -48,7 +48,7 @@ s3:
   secret-key: 'test'
 
 s3-sdk-v2:
-  enabled: true
+  enabled: false
   endpoint: 'http://127.0.0.1:9000'
   bucket-name: 'files-v2'
   region: 'RU'
