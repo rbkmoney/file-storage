@@ -57,10 +57,8 @@ s3-sdk-v2:
 
 testcontainers:
   ceph:
-    tag: 'v3.0.5-stable-3.0-luminous-centos-7'
     accessKey: 'test'
     secretKey: 'test'
   minio:
-    tag: 'latest'
-    user: 'user'
-    password: 'password'
+    user: 'minio'
+    password: 'minio123'
