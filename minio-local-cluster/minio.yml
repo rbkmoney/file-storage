@@ -3,7 +3,7 @@ version: '3.7'
 services:
   minio:
     image: quay.io/minio/minio:RELEASE.2021-10-13T00-23-17Z
-    command: server --console-address ":9001" /data
+    command: server --console-address ":9001" /data{1...12}
     hostname: minio
     expose:
       - "9000"

@@ -75,7 +75,7 @@ public class S3V2Service implements StorageService {
         var presignedRequest = s3Presigner.presignGetObject(presignRequest);
         log.info("Download url was presigned, fileId={}, bucketName={}, isBrowserExecutable={}",
                 fileId, s3SdkV2Properties.getBucketName(), presignedRequest.isBrowserExecutable());
-        log.info("Presigned http request={}", presignedRequest.httpRequest().toString());
+        log.debug("Presigned http request={}", presignedRequest.httpRequest().toString());
         return presignedRequest.url();
     }
 

@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource("classpath:application.yml")
 @DirtiesContext
-public abstract class AbstractFileStorageTest {
+public abstract class FileStorageTest {
 
     private static final int TIMEOUT = 555000;
     private static final String FILE_DATA = "test";
