@@ -7,7 +7,9 @@ import com.rbkmoney.file.storage.msgpack.Value;
 import com.rbkmoney.file.storage.service.exception.FileNotFoundException;
 import com.rbkmoney.file.storage.service.exception.StorageException;
 import com.rbkmoney.file.storage.util.DamselUtil;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -17,16 +19,12 @@ import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
-import software.amazon.awssdk.services.s3.waiters.S3Waiter;
 
 import javax.annotation.PostConstruct;
 import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -55,21 +53,23 @@ public class S3V2Service implements StorageService {
 
     @Override
     public NewFileResult createNewFile(Map<String, Value> metadata, Instant expirationTime) {
-        String fileId = UUID.randomUUID().toString();
+        var fileId = UUID.randomUUID().toString();
         uploadFileMetadata(metadata, fileId);
-        URL url = presignUploadUrl(expirationTime, fileId);
+        var url = presignUploadUrl(expirationTime, fileId);
         return new NewFileResult(fileId, url.toString());
     }
 
     @Override
     public URL generateDownloadUrl(String fileId, Instant expirationTime) {
-        List<ObjectVersion> versions = getObjectVersions(fileId);
+        var versions = getObjectVersions(fileId);
         checkFileExist(fileId, versions);
+        var fileVersionId = getFileVersionId(fileId, versions);
         var presignRequest = GetObjectPresignRequest.builder()
                 .signatureDuration(Duration.between(Instant.now(), expirationTime))
                 .getObjectRequest(GetObjectRequest.builder()
                         .bucket(s3SdkV2Properties.getBucketName())
                         .key(fileId)
+                        .versionId(fileVersionId)
                         .build())
                 .build();
         var presignedRequest = s3Presigner.presignGetObject(presignRequest);
@@ -81,10 +81,17 @@ public class S3V2Service implements StorageService {
 
     @Override
     public FileData getFileData(String fileId) {
-        List<ObjectVersion> versions = getObjectVersions(fileId);
+        var versions = getObjectVersions(fileId);
         checkFileExist(fileId, versions);
-        String versionId = getFileMetadataVersionId(fileId, versions);
-        return getFileData(fileId, versionId);
+        var fileMetadataVersionId = getFileMetadataVersionId(fileId, versions);
+        var fileMetadata = getFileMetadata(fileId, fileMetadataVersionId);
+        var fileVersionId = getFileVersionId(fileId, versions);
+        var fileName = getFileName(fileId, fileVersionId);
+        return new FileData(
+                fileMetadata.getFileId(),
+                fileName,
+                fileMetadata.getCreatedAt(),
+                fileMetadata.getMetadata());
     }
 
     // единственный доступный вариант проверки существования бакета на данный момент через catch
@@ -121,7 +128,7 @@ public class S3V2Service implements StorageService {
 
     private void createBucket() {
         try {
-            S3Waiter s3Waiter = s3SdkV2Client.waiter();
+            var s3Waiter = s3SdkV2Client.waiter();
             var createBucketRequest = CreateBucketRequest.builder()
                     .bucket(s3SdkV2Properties.getBucketName())
                     .build();
@@ -179,7 +186,7 @@ public class S3V2Service implements StorageService {
 
     private void uploadFileMetadata(Map<String, Value> metadata, String fileId) {
         try {
-            Map<String, String> s3Metadata = new HashMap<>();
+            var s3Metadata = new HashMap<String, String>();
             s3Metadata.put(FILE_ID, fileId);
             s3Metadata.put(CREATED_AT, Instant.now().toString());
             metadata.forEach((key, value) -> s3Metadata.put(METADATA + key, DamselUtil.toJsonString(value)));
@@ -190,19 +197,19 @@ public class S3V2Service implements StorageService {
                     .build();
             var putObjectResponse = s3SdkV2Client.putObject(request, RequestBody.empty());
             var response = putObjectResponse.sdkHttpResponse();
-            log.info(String.format("Check upload file metadata result %d:%s",
+            log.info(String.format("Check upload object version with file metadata result %d:%s",
                     response.statusCode(), response.statusText()));
             if (response.isSuccessful()) {
-                log.info("File metadata was uploaded, fileId={}, bucketName={}",
+                log.info("Object version with file metadata was uploaded, fileId={}, bucketName={}",
                         fileId, s3SdkV2Properties.getBucketName());
             } else {
                 throw new StorageException(String.format(
-                        "Failed to upload file metadata, fileId=%s, bucketName=%s",
+                        "Failed to upload object version with file metadata, fileId=%s, bucketName=%s",
                         fileId, s3SdkV2Properties.getBucketName()));
             }
         } catch (S3Exception ex) {
             throw new StorageException(
-                    String.format("Failed to upload file metadata, fileId=%s, bucketName=%s",
+                    String.format("Failed to upload object version with file metadata, fileId=%s, bucketName=%s",
                             fileId, s3SdkV2Properties.getBucketName()),
                     ex);
         }
@@ -253,7 +260,7 @@ public class S3V2Service implements StorageService {
     private void checkFileExist(String fileId, List<ObjectVersion> versions) {
         if (!doesFileExist(versions)) {
             throw new FileNotFoundException(String.format(
-                    "Failed to check file on exist, fileId=%s, bucketName=%s",
+                    "Failed to check object version with file on exist, fileId=%s, bucketName=%s",
                     fileId, s3SdkV2Properties.getBucketName()));
         }
     }
@@ -273,17 +280,17 @@ public class S3V2Service implements StorageService {
                 .filter(Predicate.not(ObjectVersion::isLatest))
                 .findFirst()
                 .orElseThrow(() -> new StorageException(String.format(
-                        "Version with file metadata not found, fileId=%s, bucketId=%s",
+                        "Object version with file metadata not found, fileId=%s, bucketId=%s",
                         fileId, s3SdkV2Properties.getBucketName())))
                 .versionId();
     }
 
-    private FileData getFileData(String fileId, String versionId) {
+    private FileMetadata getFileMetadata(String fileId, String fileMetadataVersionId) {
         try {
             var request = GetObjectRequest.builder()
                     .bucket(s3SdkV2Properties.getBucketName())
                     .key(fileId)
-                    .versionId(versionId)
+                    .versionId(fileMetadataVersionId)
                     .build();
             return s3SdkV2Client.getObject(
                     request,
@@ -293,8 +300,8 @@ public class S3V2Service implements StorageService {
                                 response.statusCode(), response.statusText()));
                         if (response.isSuccessful()) {
                             log.info("Object version with file metadata has been got, " +
-                                            "fileId={}, versionId={}, bucketName={}",
-                                    fileId, versionId, s3SdkV2Properties.getBucketName());
+                                            "fileId={}, fileMetadataVersionId={}, bucketName={}",
+                                    fileId, fileMetadataVersionId, s3SdkV2Properties.getBucketName());
                             if (getObjectResponse.hasMetadata() && !getObjectResponse.metadata().isEmpty()) {
                                 var s3Metadata = getObjectResponse.metadata();
                                 var metadata = s3Metadata.entrySet().stream()
@@ -303,25 +310,95 @@ public class S3V2Service implements StorageService {
                                         .collect(Collectors.toMap(
                                                 o -> o.getKey().substring(METADATA.length()),
                                                 o -> DamselUtil.fromJson(o.getValue(), Value.class)));
-                                return new FileData(fileId, "empty", s3Metadata.get(CREATED_AT), metadata);
+                                return new FileMetadata(fileId, s3Metadata.get(CREATED_AT), metadata);
                             } else {
                                 throw new StorageException(String.format(
-                                        "File metadata is empty, fileId=%s, versionId=%s, bucketId=%s",
-                                        fileId, versionId, s3SdkV2Properties.getBucketName()));
+                                        "Object version with file metadata is empty, " +
+                                                "fileId=%s, fileMetadataVersionId=%s, bucketId=%s",
+                                        fileId, fileMetadataVersionId, s3SdkV2Properties.getBucketName()));
                             }
                         } else {
                             throw new StorageException(String.format(
                                     "Failed to get object version with file metadata," +
-                                            " fileId=%s, versionId=%s, bucketName=%s",
-                                    fileId, versionId, s3SdkV2Properties.getBucketName()));
+                                            " fileId=%s, fileMetadataVersionId=%s, bucketName=%s",
+                                    fileId, fileMetadataVersionId, s3SdkV2Properties.getBucketName()));
                         }
                     });
         } catch (S3Exception ex) {
             throw new StorageException(
                     String.format(
-                            "Failed to get object version with file metadata, fileId=%s, versionId=%s, bucketName=%s",
-                            fileId, versionId, s3SdkV2Properties.getBucketName()),
+                            "Failed to get object version with file metadata, " +
+                                    "fileId=%s, fileMetadataVersionId=%s, bucketName=%s",
+                            fileId, fileMetadataVersionId, s3SdkV2Properties.getBucketName()),
                     ex);
         }
+    }
+
+    private String getFileVersionId(String fileId, List<ObjectVersion> versions) {
+        return versions.stream()
+                .filter(ObjectVersion::isLatest)
+                .findFirst()
+                .orElseThrow(() -> new StorageException(String.format(
+                        "Object version with file not found, fileId=%s, bucketId=%s",
+                        fileId, s3SdkV2Properties.getBucketName())))
+                .versionId();
+    }
+
+    private String getFileName(String fileId, String fileVersionId) {
+        try {
+            var request = GetObjectRequest.builder()
+                    .bucket(s3SdkV2Properties.getBucketName())
+                    .key(fileId)
+                    .versionId(fileVersionId)
+                    .build();
+            return s3SdkV2Client.getObject(
+                    request,
+                    (getObjectResponse, inputStream) -> {
+                        var response = getObjectResponse.sdkHttpResponse();
+                        log.info(String.format("Check get object result %d:%s",
+                                response.statusCode(), response.statusText()));
+                        if (response.isSuccessful()) {
+                            log.info("Object version with file has been got, " +
+                                            "fileId={}, fileVersionId={}, bucketName={}",
+                                    fileId, fileVersionId, s3SdkV2Properties.getBucketName());
+                            return Optional.ofNullable(getObjectResponse.contentDisposition())
+                                    .map(this::extractFileName)
+                                    .or(() -> response.firstMatchingHeader("Content-Disposition")
+                                            .map(this::extractFileName))
+                                    .orElseThrow(() -> new StorageException(String.format(
+                                            "Header 'Content-Disposition' in object version with file is empty, " +
+                                                    "fileId=%s, fileVersionId=%s, bucketId=%s",
+                                            fileId, fileVersionId, s3SdkV2Properties.getBucketName())));
+                        } else {
+                            throw new StorageException(String.format(
+                                    "Failed to get object version with file, " +
+                                            "fileId=%s, fileVersionId=%s, bucketName=%s",
+                                    fileId, fileVersionId, s3SdkV2Properties.getBucketName()));
+                        }
+                    });
+        } catch (S3Exception ex) {
+            throw new StorageException(
+                    String.format(
+                            "Failed to get object version with file, " +
+                                    "fileId=%s, fileVersionId=%s, bucketName=%s",
+                            fileId, fileVersionId, s3SdkV2Properties.getBucketName()),
+                    ex);
+        }
+    }
+
+    private String extractFileName(String contentDisposition) {
+        int fileNameIndex = contentDisposition.lastIndexOf(FILENAME_PARAM) + FILENAME_PARAM.length();
+        return contentDisposition.substring(fileNameIndex).replaceAll("\"", "");
+    }
+
+    @RequiredArgsConstructor
+    @Getter
+    @ToString
+    private static class FileMetadata {
+
+        private final String fileId;
+        private final String createdAt;
+        private final Map<String, Value> metadata;
+
     }
 }

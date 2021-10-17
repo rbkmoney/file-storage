@@ -8,7 +8,6 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.thrift.TException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,10 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,7 +41,7 @@ public abstract class AbstractFileStorageTest {
 
     private static final int TIMEOUT = 555000;
     private static final String FILE_DATA = "test";
-    private static final String FILE_NAME = "rainbow-champion";
+    private static final String FILE_NAME = "asd123.asd";
 
     protected FileStorageSrv.Iface fileStorageClient;
 
@@ -64,8 +60,11 @@ public abstract class AbstractFileStorageTest {
     public void fileUploadWithHttpClientBuilderTest() throws IOException, URISyntaxException, TException {
         String expirationTime = generateCurrentTimePlusDay().toString();
         HttpClient httpClient = HttpClientBuilder.create().build();
+        Map<String, com.rbkmoney.file.storage.msgpack.Value> metadata = new HashMap<>();
+        metadata.put("author", com.rbkmoney.file.storage.msgpack.Value.str("Mary Doe"));
+        metadata.put("version", com.rbkmoney.file.storage.msgpack.Value.str("1.0.0.0"));
 
-        NewFileResult fileResult = fileStorageClient.createNewFile(Collections.emptyMap(), expirationTime);
+        NewFileResult fileResult = fileStorageClient.createNewFile(metadata, expirationTime);
 
         Path path = getFileFromResources();
 
@@ -76,7 +75,7 @@ public abstract class AbstractFileStorageTest {
         requestPut.setEntity(new FileEntity(path.toFile()));
 
         HttpResponse response = httpClient.execute(requestPut);
-        Assertions.assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
+        assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
 
         // генерация url с доступом только для загрузки
         String downloadUrl = fileStorageClient.generateDownloadUrl(fileResult.getFileDataId(), expirationTime);
@@ -95,7 +94,10 @@ public abstract class AbstractFileStorageTest {
         try {
             // создание нового файла
             String expirationTime = generateCurrentTimePlusDay().toString();
-            NewFileResult fileResult = fileStorageClient.createNewFile(Collections.emptyMap(), expirationTime);
+            Map<String, com.rbkmoney.file.storage.msgpack.Value> metadata = new HashMap<>();
+            metadata.put("author", com.rbkmoney.file.storage.msgpack.Value.str("Mary Doe"));
+            metadata.put("version", com.rbkmoney.file.storage.msgpack.Value.str("1.0.0.0"));
+            NewFileResult fileResult = fileStorageClient.createNewFile(metadata, expirationTime);
             uploadTestData(fileResult, FILE_NAME, FILE_DATA);
 
             // генерация url с доступом только для загрузки
