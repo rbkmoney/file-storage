@@ -36,12 +36,23 @@ spring:
     ansi:
       enabled: always
 
-storage:
-  endpoint: localhost:32827
-  bucketName: files
-  signingRegion: RU
-  clientProtocol: HTTP
-  clientMaxErrorRetry: 10
+s3:
+  endpoint: 'localhost:32827'
+  bucket-name: 'files'
+  signing-region: 'RU'
+  client-protocol: 'http'
+  client-max-error-retry: 10
+  signer-override: 'S3SignerType'
+  access-key: 'test'
+  secret-key: 'test'
+
+s3-sdk-v2:
+  enabled: true
+  endpoint: 'http://127.0.0.1:9000'
+  bucket-name: 'files-v2'
+  region: 'RU'
+  access-key: 'minio'
+  secret-key: 'minio123'
 
 testcontainers:
   ceph:

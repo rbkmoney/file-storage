@@ -1,3 +1,3 @@
 # file-storage
-Прокси, связывающий rbkmoney сервисы и ceph. Имплементирует Amazon S3 клиент, который используется, как клиент для подключения к ceph.
-Ceph используется для сохранения файлов.
+Сервис, обращающийся напрямую к s3 через AWS JAVA SDK. Используется для генерации pre-signed URL that can be used to
+access an Amazon S3 resource without requiring the user of the URL to know the account's AWS security credentials. 

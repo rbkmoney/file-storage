@@ -8,7 +8,7 @@ import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.Upload;
 import com.rbkmoney.file.storage.FileData;
 import com.rbkmoney.file.storage.NewFileResult;
-import com.rbkmoney.file.storage.configuration.properties.StorageProperties;
+import com.rbkmoney.file.storage.configuration.properties.S3Properties;
 import com.rbkmoney.file.storage.msgpack.Value;
 import com.rbkmoney.file.storage.service.exception.ExtractMetadataException;
 import com.rbkmoney.file.storage.service.exception.FileNotFoundException;
@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -34,9 +35,10 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 @Service
+@ConditionalOnProperty(value = "s3-sdk-v2.enabled", havingValue = "false")
 @Slf4j
 @RequiredArgsConstructor
-public class AmazonS3StorageService implements StorageService {
+public class S3Service implements StorageService {
 
     private static final String FILE_DATA_ID = "x-rbkmoney-file-data-id";
     private static final String FILE_ID = "x-rbkmoney-file-id";
@@ -46,12 +48,12 @@ public class AmazonS3StorageService implements StorageService {
 
     private final TransferManager transferManager;
     private final AmazonS3 s3Client;
-    private final StorageProperties storageProperties;
+    private final S3Properties s3Properties;
     private String bucketName;
 
     @PostConstruct
     public void init() {
-        this.bucketName = storageProperties.getBucketName();
+        this.bucketName = s3Properties.getBucketName();
         bucketInit();
     }
 

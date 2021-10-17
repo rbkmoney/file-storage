@@ -1,4 +1,4 @@
-package com.rbkmoney.file.storage.resource;
+package com.rbkmoney.file.storage.servlet;
 
 import com.rbkmoney.file.storage.FileStorageSrv;
 import com.rbkmoney.woody.thrift.impl.http.THServiceBuilder;
@@ -12,9 +12,9 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class FileStorageServlet extends GenericServlet {
 
-    private Servlet thriftServlet;
-
     private final FileStorageSrv.Iface requestHandler;
+
+    private Servlet thriftServlet;
 
     @Override
     public void init(ServletConfig config) throws ServletException {
