@@ -59,7 +59,6 @@ public abstract class FileStorageTest {
     @Test
     public void fileUploadWithHttpClientBuilderTest() throws IOException, URISyntaxException, TException {
         String expirationTime = generateCurrentTimePlusDay().toString();
-        HttpClient httpClient = HttpClientBuilder.create().build();
         Map<String, com.rbkmoney.file.storage.msgpack.Value> metadata = new HashMap<>();
         metadata.put("author", com.rbkmoney.file.storage.msgpack.Value.str("Mary Doe"));
         metadata.put("version", com.rbkmoney.file.storage.msgpack.Value.str("1.0.0.0"));
@@ -74,6 +73,7 @@ public abstract class FileStorageTest {
                 "attachment;filename=" + URLEncoder.encode(FILE_NAME, StandardCharsets.UTF_8.name()));
         requestPut.setEntity(new FileEntity(path.toFile()));
 
+        HttpClient httpClient = HttpClientBuilder.create().build();
         HttpResponse response = httpClient.execute(requestPut);
         assertEquals(response.getStatusLine().getStatusCode(), org.apache.http.HttpStatus.SC_OK);
 
