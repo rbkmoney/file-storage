@@ -19,7 +19,7 @@ s3:
   access-key: 'test'
   secret-key: 'test'
 s3-sdk-v2:
-  enabled: false
+  enabled: 'false'
 ```
 
 дефолтная версия сигнера — `S3SignerType`, для использования более актуальной версии указывается `AWSS3V4SignerType`
@@ -28,7 +28,7 @@ s3-sdk-v2:
 
 ```yaml
 s3-sdk-v2:
-  enabled: true
+  enabled: 'true'
   endpoint: 'http://127.0.0.1:9000'
   bucket-name: 'files-v2'
   region: 'RU'

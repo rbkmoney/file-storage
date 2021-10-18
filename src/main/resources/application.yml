@@ -48,7 +48,7 @@ s3:
   secret-key: 'test'
 
 s3-sdk-v2:
-  enabled: false
+  enabled: 'false'
   endpoint: 'http://127.0.0.1:9000'
   bucket-name: 'files-v2'
   region: 'RU'

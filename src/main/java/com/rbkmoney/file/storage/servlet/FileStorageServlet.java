@@ -12,7 +12,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class FileStorageServlet extends GenericServlet {
 
-    private final FileStorageSrv.Iface requestHandler;
+    private final FileStorageSrv.Iface fileStorageHandler;
 
     private Servlet thriftServlet;
 
@@ -20,7 +20,7 @@ public class FileStorageServlet extends GenericServlet {
     public void init(ServletConfig config) throws ServletException {
         super.init(config);
         thriftServlet = new THServiceBuilder()
-                .build(FileStorageSrv.Iface.class, requestHandler);
+                .build(FileStorageSrv.Iface.class, fileStorageHandler);
     }
 
     @Override

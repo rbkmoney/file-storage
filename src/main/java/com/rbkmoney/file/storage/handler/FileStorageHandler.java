@@ -14,6 +14,7 @@ import com.rbkmoney.woody.api.flow.error.WUndefinedResultException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
+import org.springframework.stereotype.Service;
 
 import java.net.URL;
 import java.time.Instant;
@@ -21,6 +22,7 @@ import java.util.Map;
 
 import static com.rbkmoney.file.storage.util.CheckerUtil.checkString;
 
+@Service
 @Slf4j
 @RequiredArgsConstructor
 public class FileStorageHandler implements FileStorageSrv.Iface {
