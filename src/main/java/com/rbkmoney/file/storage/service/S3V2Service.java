@@ -240,9 +240,12 @@ public class S3V2Service implements StorageService {
             log.info(String.format("Check list object versions result %d:%s",
                     response.statusCode(), response.statusText()));
             if (response.isSuccessful()) {
-                log.info("List object versions has been got, fileId={}, bucketName={}",
-                        fileId, s3SdkV2Properties.getBucketName());
-                return listObjectVersionsResponse.versions();
+                var versions = listObjectVersionsResponse.versions();
+                log.info("List object versions has been got, fileId={}, bucketName={}, objectVersions={}, ",
+                        fileId,
+                        s3SdkV2Properties.getBucketName(),
+                        versions.stream().map(ObjectVersion::toString).collect(Collectors.joining(",")));
+                return versions;
             } else {
                 throw new StorageException(String.format(
                         "Failed to get list object versions, fileId=%s, bucketName=%s",
@@ -260,8 +263,10 @@ public class S3V2Service implements StorageService {
     private void checkFileExist(String fileId, List<ObjectVersion> versions) {
         if (!doesFileExist(versions)) {
             throw new FileNotFoundException(String.format(
-                    "Failed to check object version with file on exist, fileId=%s, bucketName=%s",
-                    fileId, s3SdkV2Properties.getBucketName()));
+                    "Failed to check object version with file on exist, fileId=%s, bucketName=%s, objectVersions=%s, ",
+                    fileId,
+                    s3SdkV2Properties.getBucketName(),
+                    versions.stream().map(ObjectVersion::toString).collect(Collectors.joining(","))));
         }
     }
 
@@ -280,8 +285,10 @@ public class S3V2Service implements StorageService {
                 .filter(Predicate.not(ObjectVersion::isLatest))
                 .findFirst()
                 .orElseThrow(() -> new StorageException(String.format(
-                        "Object version with file metadata not found, fileId=%s, bucketId=%s",
-                        fileId, s3SdkV2Properties.getBucketName())))
+                        "Object version with file metadata not found, fileId=%s, bucketName=%s, objectVersions=%s, ",
+                        fileId,
+                        s3SdkV2Properties.getBucketName(),
+                        versions.stream().map(ObjectVersion::toString).collect(Collectors.joining(",")))))
                 .versionId();
     }
 
@@ -314,7 +321,7 @@ public class S3V2Service implements StorageService {
                             } else {
                                 throw new StorageException(String.format(
                                         "Object version with file metadata is empty, " +
-                                                "fileId=%s, fileMetadataVersionId=%s, bucketId=%s",
+                                                "fileId=%s, fileMetadataVersionId=%s, bucketName=%s",
                                         fileId, fileMetadataVersionId, s3SdkV2Properties.getBucketName()));
                             }
                         } else {
@@ -339,8 +346,10 @@ public class S3V2Service implements StorageService {
                 .filter(ObjectVersion::isLatest)
                 .findFirst()
                 .orElseThrow(() -> new StorageException(String.format(
-                        "Object version with file not found, fileId=%s, bucketId=%s",
-                        fileId, s3SdkV2Properties.getBucketName())))
+                        "Object version with file not found, fileId=%s, bucketName=%s, objectVersions=%s, ",
+                        fileId,
+                        s3SdkV2Properties.getBucketName(),
+                        versions.stream().map(ObjectVersion::toString).collect(Collectors.joining(",")))))
                 .versionId();
     }
 
@@ -367,7 +376,7 @@ public class S3V2Service implements StorageService {
                                             .map(this::extractFileName))
                                     .orElseThrow(() -> new StorageException(String.format(
                                             "Header 'Content-Disposition' in object version with file is empty, " +
-                                                    "fileId=%s, fileVersionId=%s, bucketId=%s",
+                                                    "fileId=%s, fileVersionId=%s, bucketName=%s",
                                             fileId, fileVersionId, s3SdkV2Properties.getBucketName())));
                         } else {
                             throw new StorageException(String.format(
